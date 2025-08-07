@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Controle - Frangolândia</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <nav>
+      <a href="index.html" class="active">Painel de Pedidos</a>
+      <a href="motoqueiros.html">Painel de Entregas</a>
+    </nav>
+    <div class="info-header">
+      <div class="header-actions">
+        <div class="price-config">
+          <label for="preco_frango">Preço (R$):</label>
+          <input type="number" id="preco_frango" step="0.50">
+          <button id="savePriceBtn" class="action-btn-header">Salvar</button>
+        </div>
+      </div>
+      
+      <div class="date-navigator">
+        <button id="prev-day-btn" class="date-nav-btn">&lt;</button>
+        <span id="current-date-display"></span>
+        <button id="next-day-btn" class="date-nav-btn">&gt;</button>
+      </div>
+
+      <div class="estoque-container">
+        <div id="estoque-display">Carregando estoque...</div>
+        <button id="updateStockBtn" class="action-btn-header">Atualizar Estoque</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="pedidos-container">
+      <h2 id="pedidos-title">Carregando pedidos...</h2>
+      <div class="table-wrapper">
+        <table id="pedidosTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Cliente</th>
+              <th>Endereço</th>
+              <th>Qtd.</th>
+              <th>Valor</th>
+              <th>Motoqueiro</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="pedidosTbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <button id="fab" class="fab">Novo Pedido</button>
+
+  <div id="pedido-modal-container" class="modal-container hidden">
+    <section class="form-container">
+        <div class="form-header">
+            <h2 id="modalTitle" style="margin: 0;"></h2>
+            <button id="closePedidoModalBtn" class="close-btn">&times;</button>
+        </div>
+        
+        <div class="form-body">
+            <form id="pedidoForm">
+                <input type="hidden" id="pedidoId">
+                <div class="form-row">
+                    <label for="tipo_pedido">Tipo de Pedido</label>
+                    <select id="tipo_pedido">
+                        <option value="Entrega">Entrega</option>
+                        <option value="Retirada">Retirada no Local</option>
+                    </select>
+                </div>
+                <div class="form-grid-container">
+                    <div class="form-field delivery-only" id="canalVendaWrapper"><label for="canal_venda">Canal de Venda</label><select id="canal_venda" required></select></div>
+                    <div class="form-field"><label for="cliente_nome">Nome do Cliente</label><input type="text" id="cliente_nome" placeholder="Nome para contato"></div>
+                    <div class="form-field delivery-only" id="enderecoWrapper"><label for="cliente_endereco">Endereço</label><input type="text" id="cliente_endereco" placeholder="Rua, Número, Complemento"></div>
+                    <div class="form-field delivery-only" id="bairroWrapper"><label for="cliente_bairro">Bairro</label><input type="text" id="cliente_bairro" placeholder="Bairro da entrega"></div>
+                    <div class="form-field delivery-only"><label for="cliente_referencia">Referência</label><input type="text" id="cliente_referencia" placeholder="Ex: Perto do mercado"></div>
+                    <div class="form-field"><label for="cliente_telefone">Telefone</label><input type="tel" id="cliente_telefone" placeholder="(XX) XXXXX-XXXX"></div>
+                    <div class="form-field"><label for="quantidade_frangos">Frangos Inteiros</label><input type="number" id="quantidade_frangos" required min="0" value="1" /></div>
+                    <div class="form-field delivery-only" id="taxaEntregaWrapper"><label for="taxa_entrega">Taxa de Entrega (R$)</label><input type="number" id="taxa_entrega" step="0.50" min="0" value="0"></div>
+                    <div class="form-field"><label for="forma_pagamento">Forma de Pagamento</label><select id="forma_pagamento" required></select></div>
+                </div>
+                <div class="form-field-checkbox">
+                    <input type="checkbox" id="meio_frango">
+                    <label for="meio_frango">Adicionar Meio Frango (+ R$ 3,00)</label>
+                </div>
+                <div class="form-field-checkbox">
+                    <input type="checkbox" id="picado">
+                    <label for="picado">Frango Picado?</label>
+                </div>
+                <div class="form-field">
+                    <label for="observacao">Observação</label>
+                    <textarea id="observacao" rows="2" placeholder="Ex: Frango bem passado, sem farofa..."></textarea>
+                </div>
+                <div class="form-field">
+                    <label for="preco_total">Preço Total (R$)</label>
+                    <input type="number" id="preco_total" step="0.01" placeholder="Ex: 55.50" readonly style="background-color: #f3f4f6; font-weight: bold;">
+                </div>
+            </form>
+        </div>
+
+        <div class="form-footer">
+            <div id="pedido-form-message" class="form-message"></div>
+            <button type="submit" id="formSubmitBtn" form="pedidoForm">Salvar Pedido</button>
+        </div>
+    </section>
+  </div>
+  
+  <div id="estoque-modal-container" class="modal-container hidden">
+    <section class="form-container">
+        <button id="closeEstoqueModalBtn" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
+        <h2>Atualizar Estoque Inicial</h2>
+        <form id="estoqueForm">
+            <div class="form-field"><label for="quantidade_inicial">Quantidade de Frangos para o Dia</label><input type="number" id="quantidade_inicial" min="0" step="0.5" required placeholder="Ex: 100" /></div>
+            <button type="submit">Atualizar</button>
+        </form>
+        <div id="estoque-form-message" class="form-message"></div>
+    </section>
+  </div>
+  <div id="assign-modal-container" class="modal-container hidden">
+    <section class="form-container">
+        <button id="closeAssignModalBtn" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
+        <h2>Atribuir Pedido <span id="assignPedidoId"></span></h2>
+        <form id="assignForm">
+            <div class="form-field"><label for="motoqueiro_select">Selecione o Motoqueiro</label><select id="motoqueiro_select" required></select></div>
+            <button type="submit">Confirmar Atribuição</button>
+        </form>
+        <div id="assign-form-message" class="form-message"></div>
+    </section>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+    let selectedDate = new Date();
+
+    const elements = {
+        pedidosTbody: document.getElementById('pedidosTbody'),
+        estoqueDisplay: document.getElementById('estoque-display'),
+        fab: document.getElementById('fab'),
+        pedidoModal: document.getElementById('pedido-modal-container'),
+        pedidoForm: document.getElementById('pedidoForm'),
+        pedidoFormMessage: document.getElementById('pedido-form-message'),
+        closePedidoModalBtn: document.getElementById('closePedidoModalBtn'),
+        modalTitle: document.getElementById('modalTitle'),
+        pedidoIdInput: document.getElementById('pedidoId'),
+        tipoPedidoSelect: document.getElementById('tipo_pedido'),
+        canalVendaSelect: document.getElementById('canal_venda'),
+        deliveryFields: document.querySelectorAll('.delivery-only'),
+        estoqueModal: document.getElementById('estoque-modal-container'),
+        updateStockBtn: document.getElementById('updateStockBtn'),
+        closeEstoqueModalBtn: document.getElementById('closeEstoqueModalBtn'),
+        estoqueForm: document.getElementById('estoqueForm'),
+        estoqueFormMessage: document.getElementById('estoque-form-message'),
+        assignModal: document.getElementById('assign-modal-container'),
+        closeAssignModalBtn: document.getElementById('closeAssignModalBtn'),
+        assignForm: document.getElementById('assignForm'),
+        assignPedidoId: document.getElementById('assignPedidoId'),
+        motoqueiroSelect: document.getElementById('motoqueiro_select'),
+        assignFormMessage: document.getElementById('assign-form-message'),
+        precoFrangoInput: document.getElementById('preco_frango'),
+        savePriceBtn: document.getElementById('savePriceBtn'),
+        quantidadeFrangosInput: document.getElementById('quantidade_frangos'),
+        precoTotalInput: document.getElementById('preco_total'),
+        pedidosTitle: document.getElementById('pedidos-title'),
+        currentDateDisplay: document.getElementById('current-date-display'),
+        prevDayBtn: document.getElementById('prev-day-btn'),
+        nextDayBtn: document.getElementById('next-day-btn'),
+        meioFrangoCheckbox: document.getElementById('meio_frango'),
+        taxaEntregaInput: document.getElementById('taxa_entrega'),
+        taxaEntregaWrapper: document.getElementById('taxaEntregaWrapper'),
+    };
+
+    const formatDateToYYYYMMDD = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const formatDisplayDate = (date) => { const today = new Date(); return formatDateToYYYYMMDD(date) === formatDateToYYYYMMDD(today) ? "Hoje" : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); };
+    const updateDateDisplay = () => { elements.currentDateDisplay.textContent = formatDisplayDate(selectedDate); elements.pedidosTitle.textContent = `Pedidos de ${formatDisplayDate(selectedDate)}`; };
+    const fetchJSON = async (url, options = {}) => { const response = await fetch(url, options); if (!response.ok) { const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' })); throw new Error(errorData.error); } const text = await response.text(); return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; };
+    const fetchEstoque = async (dateString) => { try { const data = await fetchJSON(`${API_URL}/estoque?data=${dateString}`); elements.estoqueDisplay.textContent = `Estoque: ${data.quantidade_atual} / ${data.quantidade_inicial}`; elements.estoqueDisplay.style.color = data.quantidade_atual > 10 ? '#2f855a' : '#c53030'; } catch (error) { elements.estoqueDisplay.textContent = 'Erro ao carregar estoque'; } };
+    const fetchPrecoFrango = async () => { try { const data = await fetchJSON(`${API_URL}/configuracoes/preco_frango`); elements.precoFrangoInput.value = parseFloat(data.valor).toFixed(2); } catch (error) { console.error('Erro ao buscar preço do frango:', error); } };
+    const fetchPedidos = async (dateString) => { try { const pedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`); renderPedidos(pedidos); } catch (error) { elements.pedidosTbody.innerHTML = `<tr><td colspan="8">${error.message}</td></tr>`; } };
+    const fetchDataForDate = (date) => { const dateString = formatDateToYYYYMMDD(date); updateDateDisplay(); fetchPedidos(dateString); fetchEstoque(dateString); };
+    
+    const renderPedidos = (pedidos) => {
+        elements.pedidosTbody.innerHTML = '';
+        if (pedidos.length === 0) {
+            elements.pedidosTbody.innerHTML = `<tr><td colspan="8">Nenhum pedido registrado para esta data.</td></tr>`;
+            return;
+        }
+        pedidos.forEach(p => {
+            const tr = document.createElement('tr');
+            const statusClass = p.status.toLowerCase().replace(' ', '-');
+            tr.className = `status-row-${statusClass}`;
+            
+            let actionButtonsHTML = '';
+            const isPendente = p.status === 'Pendente';
+            const isRetirada = p.cliente_endereco === 'Retirada';
+            const totalFrangos = p.quantidade_frangos + (p.meio_frango ? 0.5 : 0);
+
+            if (isPendente) {
+                if (isRetirada) {
+                    actionButtonsHTML = `<button class="action-btn retirou-btn" data-id="${p.id}">Retirou</button>`;
+                } else {
+                    actionButtonsHTML = `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Atribuir</button>`;
+                }
+            } else if (p.status === 'Em Rota') {
+                actionButtonsHTML = `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Reatribuir</button>`;
+            }
+
+            tr.innerHTML = `
+                <td>${p.id}</td>
+                <td>${p.cliente_nome || 'N/A'}<br><small>${p.cliente_telefone || ''}</small></td>
+                <td>${p.cliente_endereco}<br><small>${p.cliente_bairro || ''}</small></td>
+                <td><div class="qty-display">${totalFrangos}</div></td>
+                <td>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</td>
+                <td>${p.motoqueiro_nome || '---'}</td>
+                <td><span class="status status-${statusClass}">${p.status}</span></td>
+                <td>
+                    <div class="action-buttons">
+                        ${actionButtonsHTML}
+                        <button class="action-btn edit-btn" data-id="${p.id}" ${p.status === 'Cancelado' ? 'disabled' : ''}>Editar</button>
+                        <button class="action-btn cancel-btn" data-id="${p.id}" ${p.status === 'Cancelado' || p.status === 'Entregue' ? 'disabled' : ''}>Cancelar</button>
+                    </div>
+                </td>`;
+            elements.pedidosTbody.appendChild(tr);
+        });
+    };
+
+    const populateSelect = (selectId, options) => { const select = document.getElementById(selectId); select.innerHTML = options.map(opt => `<option value="${opt.value !== undefined ? opt.value : opt}">${opt.text !== undefined ? opt.text : opt}</option>`).join(''); };
+    const openModal = (modalElement) => modalElement.classList.remove('hidden');
+    const closeModal = (modalElement) => modalElement.classList.add('hidden');
+    
+    const openPedidoModal = (mode = 'create', pedido = {}) => { 
+        elements.pedidoForm.reset(); 
+        elements.pedidoIdInput.value = ''; 
+        elements.pedidoFormMessage.textContent = '';
+        elements.pedidoFormMessage.className = 'form-message';
+        elements.modalTitle.textContent = mode === 'create' ? 'Registrar Novo Pedido' : 'Editar Pedido'; 
+        document.getElementById('formSubmitBtn').textContent = mode === 'create' ? 'Salvar Pedido' : 'Atualizar Pedido'; 
+        if (mode === 'edit') { 
+            elements.pedidoIdInput.value = pedido.id; 
+            elements.tipoPedidoSelect.value = (pedido.cliente_endereco === 'Retirada') ? 'Retirada' : 'Entrega'; 
+            Object.keys(pedido).forEach(key => { 
+                const input = document.getElementById(key); 
+                if (input) {
+                    if (input.type === 'checkbox') {
+                        input.checked = !!pedido[key];
+                    } else {
+                        input.value = pedido[key];
+                    }
+                }
+            }); 
+        } else { 
+            elements.tipoPedidoSelect.value = 'Entrega'; 
+        } 
+        handleTipoPedidoChange(); 
+        updateTotalPrice();
+        openModal(elements.pedidoModal); 
+    };
+    
+    const openAssignModal = async (pedidoId, frangosPedido) => {
+        elements.assignPedidoId.textContent = `#${pedidoId}`;
+        elements.assignForm.dataset.pedidoId = pedidoId;
+        try {
+            const motoqueiros = await fetchJSON(`${API_URL}/motoqueiros/detalhes?data=${formatDateToYYYYMMDD(selectedDate)}`);
+            const availableMotoqueiros = motoqueiros.filter(m => {
+                const frangosAtribuidos = m.pedidos_em_rota.reduce((acc, p) => acc + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+                const frangosEntregues = m.pedidos_entregues.reduce((acc, p) => acc + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+                const frangosDisponiveis = m.frangos_na_bag - frangosAtribuidos - frangosEntregues;
+                return frangosDisponiveis >= frangosPedido;
+            });
+            if (availableMotoqueiros.length === 0) {
+                elements.motoqueiroSelect.innerHTML = '<option value="">Nenhum motoqueiro com bag suficiente</option>';
+            } else {
+                populateSelect('motoqueiro_select', availableMotoqueiros.map(m => {
+                    const frangosAtribuidos = m.pedidos_em_rota.reduce((acc, p) => acc + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+                    const frangosEntregues = m.pedidos_entregues.reduce((acc, p) => acc + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+                    const espacoLivre = m.frangos_na_bag - frangosAtribuidos - frangosEntregues;
+                    return { value: m.id, text: `${m.nome} (Livre: ${espacoLivre})` };
+                }));
+            }
+            openModal(elements.assignModal);
+        } catch (error) {
+            alert(`Erro ao carregar motoqueiros: ${error.message}`);
+        }
+    };
+
+    const handleTipoPedidoChange = () => {
+        const tipo = elements.tipoPedidoSelect.value;
+        if (tipo === 'Retirada') {
+            elements.deliveryFields.forEach(el => el.classList.add('hidden'));
+            elements.taxaEntregaWrapper.classList.add('hidden');
+            elements.taxaEntregaInput.value = 0;
+            document.getElementById('cliente_endereco').value = '';
+            document.getElementById('cliente_bairro').value = '';
+        } else {
+            elements.deliveryFields.forEach(el => el.classList.remove('hidden'));
+            elements.taxaEntregaWrapper.classList.remove('hidden');
+        }
+        updateTotalPrice();
+    };
+
+    const updateTotalPrice = () => {
+        const precoUnitario = parseFloat(elements.precoFrangoInput.value) || 0;
+        const quantidade = parseInt(elements.quantidadeFrangosInput.value) || 0;
+        const temMeioFrango = elements.meioFrangoCheckbox.checked;
+        const taxaEntrega = parseFloat(elements.taxaEntregaInput.value) || 0;
+        let total = quantidade * precoUnitario;
+        if (temMeioFrango) {
+            total += (precoUnitario / 2) + 3;
+        }
+        if (elements.tipoPedidoSelect.value === 'Entrega') {
+            total += taxaEntrega;
+        }
+        elements.precoTotalInput.value = total.toFixed(2);
+    };
+    
+    const handleFormSubmit = async (e) => { 
+        e.preventDefault(); 
+        const id = elements.pedidoIdInput.value; 
+        const isEditMode = !!id; 
+        const url = isEditMode ? `${API_URL}/pedidos/${id}` : `${API_URL}/pedidos`; 
+        const method = isEditMode ? 'PUT' : 'POST'; 
+        const dadosPedido = { 
+            cliente_nome: document.getElementById('cliente_nome').value, 
+            cliente_telefone: document.getElementById('cliente_telefone').value, 
+            quantidade_frangos: parseInt(document.getElementById('quantidade_frangos').value), 
+            preco_total: parseFloat(document.getElementById('preco_total').value), 
+            forma_pagamento: document.getElementById('forma_pagamento').value,
+            picado: document.getElementById('picado').checked,
+            meio_frango: document.getElementById('meio_frango').checked,
+            taxa_entrega: parseFloat(document.getElementById('taxa_entrega').value) || 0,
+            cliente_referencia: document.getElementById('cliente_referencia').value,
+            observacao: document.getElementById('observacao').value
+        }; 
+        if (elements.tipoPedidoSelect.value === 'Retirada') { 
+            dadosPedido.canal_venda = 'Porta'; 
+            dadosPedido.cliente_endereco = 'Retirada'; 
+            dadosPedido.cliente_bairro = ''; 
+            dadosPedido.taxa_entrega = 0;
+        } else { 
+            dadosPedido.canal_venda = elements.canalVendaSelect.value; 
+            dadosPedido.cliente_endereco = document.getElementById('cliente_endereco').value; 
+            dadosPedido.cliente_bairro = document.getElementById('cliente_bairro').value; 
+        } 
+        try { 
+            const result = await fetchJSON(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dadosPedido), }); 
+            elements.pedidoFormMessage.textContent = result.message; 
+            elements.pedidoFormMessage.className = 'form-message success'; 
+            setTimeout(() => { closeModal(elements.pedidoModal); fetchDataForDate(selectedDate); }, 1000); 
+        } catch (error) { 
+            elements.pedidoFormMessage.textContent = `Erro: ${error.message}`; 
+            elements.pedidoFormMessage.className = 'form-message error'; 
+        } 
+    };
+    
+    const handleTableClick = async (e) => {
+        const target = e.target;
+        const id = target.dataset.id;
+        if (target.classList.contains('assign-btn')) { const qtd = parseFloat(target.dataset.qtd); openAssignModal(id, qtd); }
+        if (target.classList.contains('edit-btn')) { if (target.disabled) return; try { const pedido = await fetchJSON(`${API_URL}/pedidos/${id}`); openPedidoModal('edit', pedido); } catch (error) { alert(`Erro ao carregar dados do pedido: ${error.message}`); } }
+        if (target.classList.contains('cancel-btn')) { if (confirm(`Tem certeza que deseja cancelar o pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/cancelar`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao cancelar pedido: ${error.message}`); } } }
+        if (target.classList.contains('retirou-btn')) { if (confirm(`Confirmar a retirada do pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/retirou`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao confirmar retirada: ${error.message}`); } } }
+    };
+
+    const handleSavePrice = async () => { const novoPreco = parseFloat(elements.precoFrangoInput.value).toFixed(2); try { await fetchJSON(`${API_URL}/configuracoes/preco_frango`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: novoPreco }), }); alert('Preço do frango atualizado com sucesso!'); } catch (error) { alert(`Erro ao salvar preço: ${error.message}`); } };
+    const handleEstoqueSubmit = async (e) => { e.preventDefault(); const quantidade = Number(document.getElementById('quantidade_inicial').value); try { const result = await fetchJSON(`${API_URL}/estoque`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantidade, data: formatDateToYYYYMMDD(selectedDate) }) }); elements.estoqueFormMessage.textContent = result.message; elements.estoqueFormMessage.className = 'form-message success'; setTimeout(() => { closeModal(elements.estoqueModal); fetchDataForDate(selectedDate); }, 1000); } catch (error) { elements.estoqueFormMessage.textContent = `Erro: ${error.message}`; elements.estoqueFormMessage.className = 'form-message error'; } };
+    const handleAssignSubmit = async (e) => { e.preventDefault(); const pedidoId = e.target.dataset.pedidoId; const motoqueiroId = elements.motoqueiroSelect.value; if (!motoqueiroId) { elements.assignFormMessage.textContent = 'Por favor, selecione um motoqueiro.'; elements.assignFormMessage.className = 'form-message error'; return; } try { const result = await fetchJSON(`${API_URL}/pedidos/${pedidoId}/atribuir`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motoqueiroId }), }); elements.assignFormMessage.textContent = result.message; elements.assignFormMessage.className = 'form-message success'; setTimeout(() => { closeModal(elements.assignModal); fetchDataForDate(selectedDate); }, 1000); } catch (error) { elements.assignFormMessage.textContent = `Erro: ${error.message}`; elements.assignFormMessage.className = 'form-message error'; } };
+    const changeDate = (days) => { selectedDate.setDate(selectedDate.getDate() + days); fetchDataForDate(selectedDate); };
+
+    function setupEventListeners() {
+        elements.fab.addEventListener('click', () => openPedidoModal('create'));
+        elements.closePedidoModalBtn.addEventListener('click', () => closeModal(elements.pedidoModal));
+        elements.pedidoModal.addEventListener('click', (e) => e.target === elements.pedidoModal && closeModal(elements.pedidoModal));
+        elements.updateStockBtn.addEventListener('click', () => openModal(elements.estoqueModal));
+        elements.closeEstoqueModalBtn.addEventListener('click', () => closeModal(elements.estoqueModal));
+        elements.estoqueModal.addEventListener('click', (e) => e.target === elements.estoqueModal && closeModal(elements.estoqueModal));
+        elements.closeAssignModalBtn.addEventListener('click', () => closeModal(elements.assignModal));
+        elements.assignModal.addEventListener('click', (e) => e.target === elements.assignModal && closeModal(elements.assignModal));
+        elements.precoFrangoInput.addEventListener('input', updateTotalPrice);
+        elements.quantidadeFrangosInput.addEventListener('input', updateTotalPrice);
+        elements.pedidoForm.addEventListener('submit', handleFormSubmit);
+        elements.estoqueForm.addEventListener('submit', handleEstoqueSubmit);
+        elements.pedidosTbody.addEventListener('click', handleTableClick);
+        elements.savePriceBtn.addEventListener('click', handleSavePrice);
+        elements.tipoPedidoSelect.addEventListener('change', handleTipoPedidoChange);
+        elements.assignForm.addEventListener('submit', handleAssignSubmit);
+        elements.prevDayBtn.addEventListener('click', () => changeDate(-1));
+        elements.nextDayBtn.addEventListener('click', () => changeDate(1));
+        elements.meioFrangoCheckbox.addEventListener('change', updateTotalPrice);
+        elements.taxaEntregaInput.addEventListener('input', updateTotalPrice);
+    }
+
+    function init() { populateSelect('canal_venda', ['Telefone', 'Porta']); populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago']); fetchDataForDate(selectedDate); fetchPrecoFrango(); setupEventListeners(); }
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+</body>
+</html>

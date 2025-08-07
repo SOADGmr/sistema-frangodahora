@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Minhas Entregas</title>
+  <style>
+    :root { --primary-color: #4299e1; --bg-color: #f4f6f8; --card-bg: #ffffff; --text-color: #2d3748; --gray-text: #718096; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); font-size: 16px; }
+    .container { max-width: 600px; margin: 0 auto; padding: 1rem; }
+    .hidden { display: none !important; }
+    .login-view, .deliveries-view { display: flex; flex-direction: column; justify-content: center; min-height: 80vh; }
+    h1, h2 { text-align: center; margin-bottom: 1.5rem; }
+    .input-field { width: 100%; padding: 1rem; font-size: 1.2rem; border: 1px solid #cbd5e0; border-radius: 8px; margin-bottom: 1rem; }
+    .btn { width: 100%; padding: 1rem; font-size: 1.2rem; border: none; border-radius: 8px; background-color: var(--primary-color); color: white; cursor: pointer; }
+    .error-message { text-align: center; color: #c53030; margin-top: 1rem; }
+    .deliveries-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .header-actions { display: flex; gap: 1rem; align-items: center; }
+    .pix-btn { background-color: #48bb78; color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; }
+    .logout-btn { background: none; border: none; color: var(--primary-color); font-size: 1rem; cursor: pointer; }
+    .delivery-card { background-color: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 1rem; padding: 1.5rem; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+    .card-header h3 { font-size: 1.2rem; display: flex; align-items: center; gap: 0.75rem; }
+    .card-header strong { font-size: 1.2rem; color: #2f855a; }
+    .card-body p { margin-bottom: 0.5rem; color: var(--gray-text); }
+    .card-body p strong { color: var(--text-color); }
+    .card-actions { margin-top: 1.5rem; }
+    .btn-entregue { background-color: #48bb78; }
+    .no-deliveries { text-align: center; padding: 3rem; color: var(--gray-text); }
+    .picado-tag { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+    .picado-tag.sim { background-color: #ef4444; }
+    .picado-tag.nao { background-color: #e2e8f0; }
+    .modal-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: white; padding: 2rem; border-radius: 12px; max-width: 90%; text-align: center; }
+    .card-body-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+    .card-body-footer p { margin-bottom: 0; }
+    .card-delivery-controls { display: flex; align-items: center; gap: 0.5rem; }
+    .qty-display { background-color: #38a169; color: white; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; }
+    .map-btn { background-color: var(--primary-color); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+    .map-btn svg { width: 24px; height: 24px; }
+  </style>
+</head>
+<body>
+
+  <div id="app-container" class="container">
+    <!-- TELA DE LOGIN -->
+    <div id="login-view">
+      <h1>🐔 Frangolândia Entregas</h1>
+      <form id="login-form">
+        <input type="text" id="motoqueiro-nome" class="input-field" placeholder="Digite seu nome" required>
+        <button type="submit" class="btn">Entrar</button>
+        <p id="login-error" class="error-message hidden"></p>
+      </form>
+    </div>
+
+    <!-- TELA DE ENTREGAS -->
+    <div id="deliveries-view" class="hidden">
+      <div class="deliveries-header">
+        <h2 id="welcome-message"></h2>
+        <div class="header-actions">
+            <button id="pix-btn" class="pix-btn">PIX</button>
+            <button id="logout-btn" class="logout-btn">Sair</button>
+        </div>
+      </div>
+      <div id="deliveries-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL DO PIX -->
+  <div id="pix-modal" class="modal-container hidden">
+      <div class="modal-content">
+          <h2>QR Code PIX</h2>
+          <p>A imagem do QR Code aparecerá aqui.</p>
+          <button id="close-pix-modal" class="btn" style="margin-top: 1rem;">Fechar</button>
+      </div>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+    const elements = {
+      loginView: document.getElementById('login-view'),
+      deliveriesView: document.getElementById('deliveries-view'),
+      loginForm: document.getElementById('login-form'),
+      motoqueiroNomeInput: document.getElementById('motoqueiro-nome'),
+      loginError: document.getElementById('login-error'),
+      welcomeMessage: document.getElementById('welcome-message'),
+      logoutBtn: document.getElementById('logout-btn'),
+      deliveriesList: document.getElementById('deliveries-list'),
+      pixBtn: document.getElementById('pix-btn'),
+      pixModal: document.getElementById('pix-modal'),
+      closePixModalBtn: document.getElementById('close-pix-modal'),
+    };
+
+    const fetchJSON = async (url, options = {}) => {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' }));
+        throw new Error(errorData.error);
+      }
+      return response.json();
+    };
+
+    const renderDeliveries = (motoqueiro) => {
+      elements.deliveriesList.innerHTML = '';
+      if (!motoqueiro || motoqueiro.pedidos_em_rota.length === 0) {
+        elements.deliveriesList.innerHTML = '<p class="no-deliveries">Nenhuma entrega no momento. Bom descanso!</p>';
+        return;
+      }
+
+      motoqueiro.pedidos_em_rota.forEach(pedido => {
+        const card = document.createElement('div');
+        card.className = 'delivery-card';
+        const picadoClass = pedido.picado ? 'sim' : 'nao';
+        
+        const fullAddress = `${pedido.cliente_endereco}, ${pedido.cliente_bairro}`;
+        const encodedAddress = encodeURIComponent(fullAddress);
+        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
+        
+        // CORREÇÃO AQUI: Usa 'pedido.quantidade_frangos' em vez de 'pedido.quantidade'
+        const totalFrangos = pedido.quantidade_frangos + (pedido.meio_frango ? 0.5 : 0);
+        
+        card.innerHTML = `
+          <div class="card-header">
+            <h3>
+              <span class="picado-tag ${picadoClass}" title="${pedido.picado ? 'Frango Picado' : 'Frango Inteiro'}"></span>
+              #${pedido.id} - ${pedido.cliente_nome}
+            </h3>
+            <strong>R$ ${pedido.preco_total.toFixed(2)}</strong>
+          </div>
+          <div class="card-body">
+            <p><strong>Endereço:</strong> ${pedido.cliente_endereco}, ${pedido.cliente_bairro}</p>
+            ${pedido.cliente_referencia ? `<p><strong>Referência:</strong> ${pedido.cliente_referencia}</p>` : ''}
+            <p><strong>Telefone:</strong> ${pedido.cliente_telefone}</p>
+            ${pedido.observacao ? `<p><strong>Obs:</strong> ${pedido.observacao}</p>` : ''}
+            <div class="card-body-footer">
+                <p><strong>Pagamento:</strong> ${pedido.forma_pagamento}</p>
+                <div class="card-delivery-controls">
+                    <a href="${mapsUrl}" target="_blank" class="map-btn" title="Ver no mapa">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    </a>
+                    <div class="qty-display">${totalFrangos}</div>
+                </div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-entregue" data-pedido-id="${pedido.id}">Marcar como Entregue</button>
+          </div>
+        `;
+        elements.deliveriesList.appendChild(card);
+      });
+    };
+
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      const nome = elements.motoqueiroNomeInput.value.trim();
+      if (!nome) return;
+      try {
+        const motoqueiro = await fetchJSON(`${API_URL}/motoqueiros/nome/${encodeURIComponent(nome)}`);
+        localStorage.setItem('motoqueiroNome', motoqueiro.nome);
+        showDeliveriesView(motoqueiro);
+      } catch (error) {
+        elements.loginError.textContent = `Erro: ${error.message}`;
+        elements.loginError.classList.remove('hidden');
+      }
+    };
+
+    const handleLogout = () => {
+      localStorage.removeItem('motoqueiroNome');
+      elements.loginView.classList.remove('hidden');
+      elements.deliveriesView.classList.add('hidden');
+      elements.motoqueiroNomeInput.value = '';
+    };
+
+    const handleMarkAsDelivered = async (e) => {
+      if (!e.target.classList.contains('btn-entregue')) return;
+      const pedidoId = e.target.dataset.pedidoId;
+      if (confirm(`Confirmar a entrega do pedido #${pedidoId}?`)) {
+        try {
+          await fetchJSON(`${API_URL}/pedidos/${pedidoId}/entregar`, { method: 'PUT' });
+          const nome = localStorage.getItem('motoqueiroNome');
+          const motoqueiro = await fetchJSON(`${API_URL}/motoqueiros/nome/${encodeURIComponent(nome)}`);
+          renderDeliveries(motoqueiro);
+        } catch (error) {
+          alert(`Erro ao confirmar entrega: ${error.message}`);
+        }
+      }
+    };
+
+    const showDeliveriesView = (motoqueiro) => {
+      elements.welcomeMessage.textContent = `Olá, ${motoqueiro.nome.split(' ')[0]}!`;
+      renderDeliveries(motoqueiro);
+      elements.loginView.classList.add('hidden');
+      elements.deliveriesView.classList.remove('hidden');
+    };
+
+    const checkSession = async () => {
+      const nome = localStorage.getItem('motoqueiroNome');
+      if (nome) {
+        try {
+          const motoqueiro = await fetchJSON(`${API_URL}/motoqueiros/nome/${encodeURIComponent(nome)}`);
+          showDeliveriesView(motoqueiro);
+        } catch (error) {
+          handleLogout();
+        }
+      }
+    };
+
+    elements.loginForm.addEventListener('submit', handleLogin);
+    elements.logoutBtn.addEventListener('click', handleLogout);
+    elements.deliveriesList.addEventListener('click', handleMarkAsDelivered);
+    elements.pixBtn.addEventListener('click', () => elements.pixModal.classList.remove('hidden'));
+    elements.closePixModalBtn.addEventListener('click', () => elements.pixModal.classList.add('hidden'));
+    elements.pixModal.addEventListener('click', (e) => { if(e.target === elements.pixModal) elements.pixModal.classList.add('hidden'); });
+
+
+    document.addEventListener('DOMContentLoaded', checkSession);
+  </script>
+</body>
+</html>
