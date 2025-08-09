@@ -3,6 +3,12 @@ const path = require('path');
 
 const dbPath = path.resolve(__dirname, 'database', 'bancodedados.db');
 
+const fs = require('fs');
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Erro ao conectar ao banco de dados:', err.message);
@@ -52,7 +58,7 @@ function criarTabelas() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         motoqueiro_id INTEGER NOT NULL,
         data TEXT NOT NULL,
-        frangos_na_bag REAL DEFAULT 0, /* ATUALIZADO PARA REAL */
+        frangos_na_bag REAL DEFAULT 0,
         FOREIGN KEY(motoqueiro_id) REFERENCES motoqueiros(id),
         UNIQUE(motoqueiro_id, data)
       )
@@ -61,12 +67,20 @@ function criarTabelas() {
     db.run(`
       CREATE TABLE IF NOT EXISTS estoque (
         data TEXT PRIMARY KEY,
-        quantidade_inicial REAL NOT NULL /* ATUALIZADO PARA REAL */
+        quantidade_inicial REAL NOT NULL
       )
     `);
     
     db.run(`CREATE TABLE IF NOT EXISTS configuracoes (chave TEXT PRIMARY KEY NOT NULL, valor TEXT NOT NULL)`);
     db.run(`INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('preco_frango', '50.00')`);
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS taxas_bairro (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bairro TEXT NOT NULL UNIQUE,
+            taxa REAL NOT NULL
+        )
+    `);
 
     console.log("Tabelas criadas ou já existentes com sucesso.");
   });

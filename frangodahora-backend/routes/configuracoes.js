@@ -2,6 +2,54 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// --- ROTAS PARA TAXAS DE BAIRRO ---
+
+// GET: Obter todas as taxas de bairro
+router.get('/taxas', (req, res) => {
+    db.all("SELECT * FROM taxas_bairro ORDER BY bairro", [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+// POST: Adicionar uma nova taxa de bairro
+router.post('/taxas', (req, res) => {
+    const { bairro, taxa } = req.body;
+    if (!bairro || taxa === undefined) {
+        return res.status(400).json({ error: "Por favor, forneça o nome do bairro e a taxa." });
+    }
+
+    const sql = `INSERT INTO taxas_bairro (bairro, taxa) VALUES (?, ?)`;
+    db.run(sql, [bairro, taxa], function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.status(201).json({ id: this.lastID, bairro, taxa });
+    });
+});
+
+// DELETE: Excluir uma taxa de bairro
+router.delete('/taxas/:id', (req, res) => {
+    const { id } = req.params;
+    db.run(`DELETE FROM taxas_bairro WHERE id = ?`, id, function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: "Bairro não encontrado." });
+        }
+        res.json({ message: 'Bairro excluído com sucesso', changes: this.changes });
+    });
+});
+
+
+// --- ROTAS GENÉRICAS DE CONFIGURAÇÃO (JÁ EXISTENTES) ---
+
 router.get('/:chave', (req, res) => {
   const { chave } = req.params;
   db.get('SELECT valor FROM configuracoes WHERE chave = ?', [chave], (err, row) => {
