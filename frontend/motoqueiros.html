@@ -5,50 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Painel de Entregas - Frangolândia</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    :root { --primary-color: #4299e1; }
-    .page-container { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: start; }
-    .motoqueiros-panel, .orders-panel { display: flex; flex-direction: column; gap: 1.5rem; }
-    .motoqueiro-card { background-color: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: all 0.2s ease-in-out; }
-    .card-header { padding: 1rem 1.5rem; background-color: #f7fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-    .card-header h3 { font-size: 1.25rem; cursor: pointer; }
-    .card-body { padding: 1.5rem; }
-    .chicken-squares { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem; }
-    .chicken-square { width: 20px; height: 20px; border-radius: 4px; }
-    .square-delivered { background-color: #48bb78; }
-    .square-assigned { background-color: #947703; }
-    .square-available { background-color: #f59e0b; }
-    .add-motoqueiro-card { background-color: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 1.5rem; }
-    .add-forms-container { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
-    .orders-panel .pedidos-container { max-height: 80vh; overflow-y: auto; }
-    .pedidos-list { list-style: none; padding: 0; }
-    .pedido-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #e2e8f0; }
-    .pedido-item:last-child { border-bottom: none; }
-    .pedido-info { display: flex; flex-direction: column; }
-    .pedido-info span { font-weight: 600; }
-    .pedido-info small { color: #718096; }
-    .pedido-qtd { font-weight: bold; color: #4a5568; }
-    .entregar-btn { background-color: #48bb78; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
-    .entregar-btn:hover { background-color: #38a169; }
-    .no-pedidos { text-align: center; color: #718096; padding: 2rem; }
-    #details-modal .form-container { max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-    .modal-header-details { padding: 2rem 2rem 1rem 2rem; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
-    #details-pedidos-list { overflow-y: auto; flex-grow: 1; padding: 0 2rem; }
-    .modal-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .modal-stats-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1rem; margin-top: 1rem; }
-    .modal-stat { background-color: #f8fafc; padding: 0.75rem; border-radius: 8px; }
-    .modal-stat-title { font-size: 0.8rem; color: #718096; margin-bottom: 0.25rem; }
-    .modal-stat-value { font-size: 1.2rem; font-weight: 600; }
-    .modal-chicken-squares .chicken-square { width: 15px; height: 15px; }
-    .pedido-item.route-draggable { cursor: grab; }
-    .pedido-item.route-draggable:active { cursor: grabbing; }
-    .pedido-item.dragging-route { opacity: 0.4; }
-    .modal-footer-actions { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background-color: #f7fafc; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
-    .delete-motoqueiro-btn { background-color: #ef4444; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
-    .delete-motoqueiro-btn:hover { background-color: #dc2626; }
-    .save-route-btn { background-color: var(--primary-color); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
-    .save-route-btn:hover { background-color: #3182ce; }
-  </style>
 </head>
 <body>
 
@@ -56,37 +12,23 @@
     <nav>
       <a href="index.html">Painel de Pedidos</a>
       <a href="motoqueiros.html" class="active">Painel de Entregas</a>
+      <a href="configuracoes.html">Configurações</a>
     </nav>
-    <div class="info-header" style="justify-content: center;">
+    <div class="info-header">
         <div class="date-navigator">
             <button id="prev-day-btn" class="date-nav-btn">&lt;</button>
             <span id="current-date-display"></span>
             <button id="next-day-btn" class="date-nav-btn">&gt;</button>
+        </div>
+        <div class="header-actions">
+            <button id="open-start-day-modal-btn" class="action-btn-header">Iniciar Dia de Motoqueiro</button>
         </div>
     </div>
   </header>
 
   <main class="page-container">
     <div id="motoqueiros-list" class="motoqueiros-panel">
-        <div class="add-motoqueiro-card">
-            <div class="add-forms-container">
-                <form id="start-day-form" class="form-container" style="padding:0; box-shadow:none; max-height: none; display: block;">
-                    <h2>Iniciar Dia / Adicionar Frangos</h2>
-                    <div class="form-grid-container" style="grid-template-columns: 2fr 1fr;">
-                        <div class="form-field">
-                            <label for="motoqueiro-nome-start">Nome do Motoqueiro</label>
-                            <input type="text" id="motoqueiro-nome-start" list="motoqueiros-datalist" placeholder="Digite ou selecione" required>
-                            <datalist id="motoqueiros-datalist"></datalist>
-                        </div>
-                        <div class="form-field">
-                            <label for="frangos-na-bag">Frangos na Bag</label>
-                            <input type="number" id="frangos-na-bag" min="0" step="0.5" required>
-                        </div>
-                    </div>
-                    <button type="submit">Iniciar / Adicionar</button>
-                </form>
-            </div>
-        </div>
+        <!-- Os cards dos motoqueiros serão inseridos aqui pelo JavaScript -->
     </div>
 
     <div class="orders-panel">
@@ -98,6 +40,42 @@
     </div>
   </main>
 
+  <!-- MODAL PARA INICIAR O DIA DO MOTOQUEIRO -->
+  <div id="start-day-modal" class="modal-container hidden">
+    <section class="form-container" style="max-width: 500px;">
+        <button id="close-start-day-modal" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
+        <h2>Iniciar Dia do Motoqueiro</h2>
+        <form id="start-day-form">
+            <div class="form-field">
+                <label for="motoqueiro-nome-start">Nome do Motoqueiro</label>
+                <input type="text" id="motoqueiro-nome-start" list="motoqueiros-datalist" placeholder="Digite ou selecione um nome" required>
+                <datalist id="motoqueiros-datalist"></datalist>
+            </div>
+            <div class="form-field">
+                <label for="frangos-na-bag-start">Frangos Iniciais na Bag</label>
+                <input type="number" id="frangos-na-bag-start" min="0" step="0.5" required>
+            </div>
+            <button type="submit">Confirmar Início</button>
+        </form>
+    </section>
+  </div>
+
+  <!-- MODAL PARA AJUSTAR FRANGOS NA BAG -->
+  <div id="adjust-chicken-modal" class="modal-container hidden">
+    <section class="form-container" style="max-width: 500px;">
+        <button id="close-adjust-chicken-modal" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
+        <h2 id="adjust-modal-title">Ajustar Frangos</h2>
+        <form id="adjust-chicken-form">
+            <div class="form-field">
+                <label for="adjust-chicken-amount">Quantidade</label>
+                <input type="number" id="adjust-chicken-amount" min="0" step="0.5" required>
+            </div>
+            <button type="submit">Confirmar</button>
+        </form>
+    </section>
+  </div>
+
+  <!-- MODAL DE DETALHES DO MOTOQUEIRO -->
   <div id="details-modal" class="modal-container hidden">
     <section class="form-container">
         <button id="close-details-modal" class="close-btn">&times;</button>
@@ -120,7 +98,7 @@
         startDayForm: document.getElementById('start-day-form'),
         motoqueiroNomeStart: document.getElementById('motoqueiro-nome-start'),
         motoqueirosDatalist: document.getElementById('motoqueiros-datalist'),
-        frangosNaBagInput: document.getElementById('frangos-na-bag'),
+        frangosNaBagStartInput: document.getElementById('frangos-na-bag-start'),
         searchPedidosInput: document.getElementById('search-pedidos'),
         detailsModal: document.getElementById('details-modal'),
         closeDetailsModalBtn: document.getElementById('close-details-modal'),
@@ -130,9 +108,23 @@
         currentDateDisplay: document.getElementById('current-date-display'),
         prevDayBtn: document.getElementById('prev-day-btn'),
         nextDayBtn: document.getElementById('next-day-btn'),
+        openStartDayModalBtn: document.getElementById('open-start-day-modal-btn'),
+        startDayModal: document.getElementById('start-day-modal'),
+        closeStartDayModalBtn: document.getElementById('close-start-day-modal'),
+        adjustChickenModal: document.getElementById('adjust-chicken-modal'),
+        closeAdjustChickenModalBtn: document.getElementById('close-adjust-chicken-modal'),
+        adjustChickenForm: document.getElementById('adjust-chicken-form'),
+        adjustModalTitle: document.getElementById('adjust-modal-title'),
+        adjustChickenAmountInput: document.getElementById('adjust-chicken-amount'),
     };
 
-    const formatDateToYYYYMMDD = (date) => date.toISOString().slice(0, 10);
+    const formatDateToYYYYMMDD = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const formatDisplayDate = (date) => { const today = new Date(); return formatDateToYYYYMMDD(date) === formatDateToYYYYMMDD(today) ? "Hoje" : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); };
     const updateDateDisplay = () => { elements.currentDateDisplay.textContent = formatDisplayDate(selectedDate); };
     const fetchJSON = async (url, options = {}) => { const response = await fetch(url, options); if (!response.ok) { const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' })); throw new Error(errorData.error); } const text = await response.text(); return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; };
@@ -150,16 +142,36 @@
             for(let i = 0; i < Math.floor(frangosEntregues); i++) { squaresHtml += `<div class="chicken-square square-delivered"></div>`; }
             for(let i = 0; i < Math.floor(frangosAtribuidos); i++) { squaresHtml += `<div class="chicken-square square-assigned"></div>`; }
             for(let i = 0; i < Math.floor(frangosDisponiveis); i++) { squaresHtml += `<div class="chicken-square square-available"></div>`; }
-            card.innerHTML = `<div class="card-header"><h3 class="motoqueiro-name" data-id="${m.id}">${m.nome}</h3></div><div class="card-body"><strong>Bag: ${frangosAtribuidos + frangosEntregues} / ${m.frangos_na_bag} frangos</strong><div class="chicken-squares">${squaresHtml}</div></div>`;
+            
+            card.innerHTML = `
+                <div class="motoqueiro-card-content">
+                    <div class="motoqueiro-info-wrapper">
+                        <h3 class="motoqueiro-name">${m.nome}</h3>
+                        <span class="bag-info">Bag: ${frangosDisponiveis} / ${m.frangos_na_bag} frangos</span>
+                    </div>
+                    <div class="adjust-buttons">
+                        <button class="adjust-btn add" data-motoqueiro-nome="${m.nome}" data-action="add">+</button>
+                        <button class="adjust-btn remove" data-motoqueiro-nome="${m.nome}" data-action="remove">-</button>
+                    </div>
+                    <div class="chicken-squares">${squaresHtml}</div>
+                </div>
+            `;
             elements.motoqueirosList.appendChild(card);
         });
     };
 
-    const renderAllPedidos = (pedidos) => {
+    const renderAllPedidos = (searchTerm = '') => {
         elements.allOrdersList.innerHTML = '';
-        const deliveryOrders = pedidos.filter(p => p.cliente_endereco !== 'Retirada');
+        let deliveryOrders = allPedidos.filter(p => p.cliente_endereco !== 'Retirada');
+        if (searchTerm) {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            deliveryOrders = deliveryOrders.filter(p => 
+                (p.cliente_nome && p.cliente_nome.toLowerCase().includes(lowerCaseSearchTerm)) || 
+                (p.cliente_bairro && p.cliente_bairro.toLowerCase().includes(lowerCaseSearchTerm))
+            );
+        }
         if (deliveryOrders.length === 0) {
-            elements.allOrdersList.innerHTML = '<div class="no-pedidos">Nenhum pedido de entrega para hoje.</div>';
+            elements.allOrdersList.innerHTML = '<div class="no-pedidos">Nenhum pedido de entrega encontrado.</div>';
             return;
         }
         deliveryOrders.forEach(p => {
@@ -250,9 +262,9 @@
     const handleStartDay = async (e) => {
         e.preventDefault();
         const motoqueiroNome = elements.motoqueiroNomeStart.value.trim();
-        const frangosNaBag = parseFloat(elements.frangosNaBagInput.value);
+        const frangosNaBag = parseFloat(elements.frangosNaBagStartInput.value);
         if (!motoqueiroNome || isNaN(frangosNaBag)) {
-            alert('Preencha o nome do motoqueiro e a quantidade de frangos.');
+            alert('Preencha o nome e a quantidade de frangos.');
             return;
         }
         try {
@@ -266,15 +278,70 @@
                 })
             });
             elements.startDayForm.reset();
-            fetchDataForDate(selectedDate);
-            populateMasterMotoqueiros();
+            elements.startDayModal.classList.add('hidden');
+            await refreshAllData();
         } catch (error) {
             alert(`Erro: ${error.message}`);
         }
     };
+
+    const handleAddOrRemoveChickens = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const motoqueiroNome = form.dataset.motoqueiroNome;
+        const action = form.dataset.action;
+        let amount = parseFloat(elements.adjustChickenAmountInput.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            alert('Por favor, insira uma quantidade válida.');
+            return;
+        }
+
+        if (action === 'remove') {
+            amount = -amount;
+        }
+
+        try {
+            await fetchJSON(`${API_URL}/motoqueiros/operacao`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    motoqueiro_nome: motoqueiroNome, 
+                    data: formatDateToYYYYMMDD(selectedDate),
+                    frangos_na_bag: amount 
+                })
+            });
+            elements.adjustChickenModal.classList.add('hidden');
+            await refreshAllData();
+        } catch (error) {
+            alert(`Erro ao ajustar frangos: ${error.message}`);
+        }
+    };
     
-    const handleMarkAsDelivered = async (pedidoId) => { if (confirm(`Confirmar a entrega do pedido #${pedidoId}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${pedidoId}/entregar`, { method: 'PUT' }); init(); elements.detailsModal.classList.add('hidden'); } catch (error) { alert(`Erro ao finalizar entrega: ${error.message}`); } } };
-    const handleDeleteMotoqueiro = async (motoqueiroId) => { if (confirm(`Tem certeza que deseja excluir este motoqueiro? Esta ação não pode ser desfeita.`)) { try { await fetchJSON(`${API_URL}/motoqueiros/${motoqueiroId}`, { method: 'DELETE' }); init(); elements.detailsModal.classList.add('hidden'); } catch (error) { alert(`Erro ao excluir motoqueiro: ${error.message}`); } } };
+    const handleMarkAsDelivered = async (pedidoId) => { 
+        if (confirm(`Confirmar a entrega do pedido #${pedidoId}?`)) { 
+            try { 
+                await fetchJSON(`${API_URL}/pedidos/${pedidoId}/entregar`, { method: 'PUT' }); 
+                await refreshAllData();
+                elements.detailsModal.classList.add('hidden'); 
+            } catch (error) { 
+                alert(`Erro ao finalizar entrega: ${error.message}`); 
+            } 
+        } 
+    };
+
+    const handleDeleteMotoqueiro = async (motoqueiroId) => { 
+        if (confirm(`Tem certeza que deseja excluir este motoqueiro? Esta ação não pode ser desfeita.`)) { 
+            try { 
+                await fetchJSON(`${API_URL}/motoqueiros/${motoqueiroId}`, { method: 'DELETE' }); 
+                await refreshAllData();
+                elements.detailsModal.classList.add('hidden'); 
+            } catch (error) { 
+                alert(`Erro ao excluir motoqueiro: ${error.message}`); 
+            } 
+        } 
+    };
+
     const handleSaveRoute = async () => {
         const orderedIds = [...elements.detailsPedidosList.querySelectorAll('.route-draggable')].map(item => item.dataset.pedidoId);
         try {
@@ -285,7 +352,7 @@
             });
             alert('Rota salva com sucesso!');
             elements.detailsModal.classList.add('hidden');
-            init();
+            await refreshAllData();
         } catch (error) {
             alert('Erro ao salvar a nova ordem da rota.');
             console.error(error);
@@ -314,7 +381,7 @@
             if (espacoLivre >= pedidoQtd) {
                 try {
                     await fetchJSON(`${API_URL}/pedidos/${pedidoId}/atribuir`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motoqueiroId: motoqueiro.id }) });
-                    init();
+                    await refreshAllData();
                 } catch (error) { alert(`Erro ao atribuir pedido: ${error.message}`); }
             } else {
                 alert(`Bag insuficiente! ${motoqueiro.nome} só tem ${espacoLivre} frangos livres.`);
@@ -354,16 +421,21 @@
                 fetchJSON(`${API_URL}/motoqueiros/detalhes?data=${dateString}`),
                 fetchJSON(`${API_URL}/pedidos?data=${dateString}`)
             ]);
-            activeMotoqueiros = motoqueiros;
-            allPedidos = pedidos;
+            activeMotoqueiros = motoqueiros || [];
+            allPedidos = pedidos || [];
             renderMotoqueiros();
-            renderAllPedidos(allPedidos);
+            renderAllPedidos();
         } catch (error) {
             console.error("Erro ao buscar dados do dia:", error);
             activeMotoqueiros = [];
-            allPedidos = [];
+            try {
+                allPedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`);
+            } catch (pedidosError) {
+                console.error("Erro ao buscar apenas os pedidos:", pedidosError);
+                allPedidos = [];
+            }
             renderMotoqueiros();
-            renderAllPedidos([]);
+            renderAllPedidos();
         }
     };
 
@@ -376,6 +448,11 @@
             console.error("Erro ao carregar lista de motoqueiros:", error);
         }
     };
+    
+    const refreshAllData = async () => {
+        await populateMasterMotoqueiros();
+        await fetchDataForDate(selectedDate);
+    };
 
     const changeDate = (days) => {
         selectedDate.setDate(selectedDate.getDate() + days);
@@ -383,39 +460,62 @@
     };
 
     function setupEventListeners() {
+        elements.openStartDayModalBtn.addEventListener('click', () => elements.startDayModal.classList.remove('hidden'));
+        elements.closeStartDayModalBtn.addEventListener('click', () => elements.startDayModal.classList.add('hidden'));
+        elements.startDayModal.addEventListener('click', (e) => { if (e.target === elements.startDayModal) elements.startDayModal.classList.add('hidden'); });
         elements.startDayForm.addEventListener('submit', handleStartDay);
+
+        elements.closeAdjustChickenModalBtn.addEventListener('click', () => elements.adjustChickenModal.classList.add('hidden'));
+        elements.adjustChickenModal.addEventListener('click', (e) => { if (e.target === elements.adjustChickenModal) elements.adjustChickenModal.classList.add('hidden'); });
+        elements.adjustChickenForm.addEventListener('submit', handleAddOrRemoveChickens);
+
         elements.prevDayBtn.addEventListener('click', () => changeDate(-1));
         elements.nextDayBtn.addEventListener('click', () => changeDate(1));
+        
         elements.searchPedidosInput.addEventListener('input', (e) => { 
-            const term = e.target.value.toLowerCase(); 
-            const filtered = allPedidos.filter(p => (p.cliente_nome && p.cliente_nome.toLowerCase().includes(term)) || (p.cliente_bairro && p.cliente_bairro.toLowerCase().includes(term))); 
-            renderAllPedidos(filtered); 
+            renderAllPedidos(e.target.value);
         });
+        
         elements.closeDetailsModalBtn.addEventListener('click', () => elements.detailsModal.classList.add('hidden'));
         elements.detailsModal.addEventListener('click', (e) => { 
             if (e.target === elements.detailsModal) elements.detailsModal.classList.add('hidden');
         });
+        
         elements.motoqueirosList.addEventListener('click', (e) => { 
-            if (e.target.classList.contains('motoqueiro-name')) openDetailsModal(e.target.dataset.id); 
+            const cardElement = e.target.closest('.motoqueiro-card');
+            const adjustButton = e.target.closest('.adjust-btn');
+
+            if (adjustButton) {
+                const motoqueiroNome = adjustButton.dataset.motoqueiroNome;
+                const action = adjustButton.dataset.action;
+                elements.adjustModalTitle.textContent = action === 'add' ? `Adicionar Frangos para ${motoqueiroNome}` : `Remover Frangos de ${motoqueiroNome}`;
+                elements.adjustChickenForm.dataset.motoqueiroNome = motoqueiroNome;
+                elements.adjustChickenForm.dataset.action = action;
+                elements.adjustChickenAmountInput.value = '';
+                elements.adjustChickenModal.classList.remove('hidden');
+            } else if (cardElement) {
+                openDetailsModal(cardElement.dataset.motoqueiroId);
+            }
         });
+
         elements.detailsPedidosList.addEventListener('click', (e) => { 
             if (e.target.classList.contains('entregar-btn')) handleMarkAsDelivered(e.target.dataset.id); 
         });
+        
         elements.detailsModalFooter.addEventListener('click', (e) => {
             if (e.target.classList.contains('delete-motoqueiro-btn')) handleDeleteMotoqueiro(e.target.dataset.id);
             if (e.target.classList.contains('save-route-btn')) handleSaveRoute();
         });
     }
 
-    async function init() {
-        await populateMasterMotoqueiros();
-        await fetchDataForDate(selectedDate);
+    async function initializePage() {
         setupEventListeners();
         setupDragAndDrop();
         setupRouteReordering();
+        await refreshAllData();
     }
 
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', initializePage);
   </script>
 
 </body>

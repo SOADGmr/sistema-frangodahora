@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Painel de Controle - Frangolândia</title>
+  <title>Painel de Pedidos - Frango da Hora</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
   <header>
     <nav>
-      <a href="index.html" class="active">Painel de Pedidos</a>
+      <a href="index.html">Novo Pedido</a>
+      <a href="pedidos.html" class="active">Painel de Pedidos</a>
       <a href="motoqueiros.html">Painel de Entregas</a>
-      <a href="configuracoes.html">Configurações</a>
     </nav>
     <div class="info-header">
       <div class="header-actions">
@@ -82,11 +82,7 @@
                     <div class="form-field delivery-only" id="canalVendaWrapper"><label for="canal_venda">Canal de Venda</label><select id="canal_venda" required></select></div>
                     <div class="form-field"><label for="cliente_nome">Nome do Cliente</label><input type="text" id="cliente_nome" placeholder="Nome para contato"></div>
                     <div class="form-field delivery-only" id="enderecoWrapper"><label for="cliente_endereco">Endereço</label><input type="text" id="cliente_endereco" placeholder="Rua, Número, Complemento"></div>
-                    <div class="form-field delivery-only" id="bairroWrapper">
-                        <label for="cliente_bairro">Bairro</label>
-                        <input type="text" id="cliente_bairro" placeholder="Digite ou selecione o bairro" list="bairros-datalist">
-                        <datalist id="bairros-datalist"></datalist>
-                    </div>
+                    <div class="form-field delivery-only" id="bairroWrapper"><label for="cliente_bairro">Bairro</label><input type="text" id="cliente_bairro" placeholder="Bairro da entrega"></div>
                     <div class="form-field delivery-only"><label for="cliente_referencia">Referência</label><input type="text" id="cliente_referencia" placeholder="Ex: Perto do mercado"></div>
                     <div class="form-field"><label for="cliente_telefone">Telefone</label><input type="tel" id="cliente_telefone" placeholder="(XX) XXXXX-XXXX"></div>
                     <div class="form-field"><label for="quantidade_frangos">Frangos Inteiros</label><input type="number" id="quantidade_frangos" required min="0" value="1" /></div>
@@ -145,7 +141,6 @@
   <script>
     const API_URL = '/api';
     let selectedDate = new Date();
-    let bairrosConfig = []; // Armazena a lista de bairros e taxas
 
     const elements = {
         pedidosTbody: document.getElementById('pedidosTbody'),
@@ -182,8 +177,6 @@
         meioFrangoCheckbox: document.getElementById('meio_frango'),
         taxaEntregaInput: document.getElementById('taxa_entrega'),
         taxaEntregaWrapper: document.getElementById('taxaEntregaWrapper'),
-        clienteBairroInput: document.getElementById('cliente_bairro'),
-        bairrosDatalist: document.getElementById('bairros-datalist'),
     };
 
     const formatDateToYYYYMMDD = (date) => {
@@ -201,15 +194,6 @@
     const fetchPedidos = async (dateString) => { try { const pedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`); renderPedidos(pedidos); } catch (error) { elements.pedidosTbody.innerHTML = `<tr><td colspan="8">${error.message}</td></tr>`; } };
     const fetchDataForDate = (date) => { const dateString = formatDateToYYYYMMDD(date); updateDateDisplay(); fetchPedidos(dateString); fetchEstoque(dateString); };
     
-    const fetchBairros = async () => {
-        try {
-            bairrosConfig = await fetchJSON(`${API_URL}/configuracoes/taxas`);
-            elements.bairrosDatalist.innerHTML = bairrosConfig.map(b => `<option value="${b.bairro}">`).join('');
-        } catch (error) {
-            console.error("Erro ao carregar bairros:", error);
-        }
-    };
-
     const renderPedidos = (pedidos) => {
         elements.pedidosTbody.innerHTML = '';
         if (pedidos.length === 0) {
@@ -376,7 +360,7 @@
             const result = await fetchJSON(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dadosPedido), }); 
             elements.pedidoFormMessage.textContent = result.message; 
             elements.pedidoFormMessage.className = 'form-message success'; 
-            setTimeout(() => { closeModal(elements.pedidoModal); fetchDataForDate(selectedDate); fetchBairros(); }, 1000); 
+            setTimeout(() => { closeModal(elements.pedidoModal); fetchDataForDate(selectedDate); }, 1000); 
         } catch (error) { 
             elements.pedidoFormMessage.textContent = `Erro: ${error.message}`; 
             elements.pedidoFormMessage.className = 'form-message error'; 
@@ -418,23 +402,9 @@
         elements.nextDayBtn.addEventListener('click', () => changeDate(1));
         elements.meioFrangoCheckbox.addEventListener('change', updateTotalPrice);
         elements.taxaEntregaInput.addEventListener('input', updateTotalPrice);
-        elements.clienteBairroInput.addEventListener('input', (e) => {
-            const bairroSelecionado = bairrosConfig.find(b => b.bairro.toLowerCase() === e.target.value.toLowerCase());
-            if (bairroSelecionado) {
-                elements.taxaEntregaInput.value = bairroSelecionado.taxa.toFixed(2);
-                updateTotalPrice();
-            }
-        });
     }
 
-    function init() { 
-        populateSelect('canal_venda', ['Telefone', 'Porta']); 
-        populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago']); 
-        fetchDataForDate(selectedDate); 
-        fetchPrecoFrango(); 
-        fetchBairros();
-        setupEventListeners(); 
-    }
+    function init() { populateSelect('canal_venda', ['Telefone', 'Porta']); populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago']); fetchDataForDate(selectedDate); fetchPrecoFrango(); setupEventListeners(); }
     document.addEventListener('DOMContentLoaded', init);
   </script>
 

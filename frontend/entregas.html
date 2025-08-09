@@ -4,42 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Minhas Entregas</title>
-  <style>
-    :root { --primary-color: #4299e1; --bg-color: #f4f6f8; --card-bg: #ffffff; --text-color: #2d3748; --gray-text: #718096; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); font-size: 16px; }
-    .container { max-width: 600px; margin: 0 auto; padding: 1rem; }
-    .hidden { display: none !important; }
-    .login-view, .deliveries-view { display: flex; flex-direction: column; justify-content: center; min-height: 80vh; }
-    h1, h2 { text-align: center; margin-bottom: 1.5rem; }
-    .input-field { width: 100%; padding: 1rem; font-size: 1.2rem; border: 1px solid #cbd5e0; border-radius: 8px; margin-bottom: 1rem; }
-    .btn { width: 100%; padding: 1rem; font-size: 1.2rem; border: none; border-radius: 8px; background-color: var(--primary-color); color: white; cursor: pointer; }
-    .error-message { text-align: center; color: #c53030; margin-top: 1rem; }
-    .deliveries-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .header-actions { display: flex; gap: 1rem; align-items: center; }
-    .pix-btn { background-color: #48bb78; color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; }
-    .logout-btn { background: none; border: none; color: var(--primary-color); font-size: 1rem; cursor: pointer; }
-    .delivery-card { background-color: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 1rem; padding: 1.5rem; }
-    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
-    .card-header h3 { font-size: 1.2rem; display: flex; align-items: center; gap: 0.75rem; }
-    .card-header strong { font-size: 1.2rem; color: #2f855a; }
-    .card-body p { margin-bottom: 0.5rem; color: var(--gray-text); }
-    .card-body p strong { color: var(--text-color); }
-    .card-actions { margin-top: 1.5rem; }
-    .btn-entregue { background-color: #48bb78; }
-    .no-deliveries { text-align: center; padding: 3rem; color: var(--gray-text); }
-    .picado-tag { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
-    .picado-tag.sim { background-color: #ef4444; }
-    .picado-tag.nao { background-color: #e2e8f0; }
-    .modal-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: white; padding: 2rem; border-radius: 12px; max-width: 90%; text-align: center; }
-    .card-body-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
-    .card-body-footer p { margin-bottom: 0; }
-    .card-delivery-controls { display: flex; align-items: center; gap: 0.5rem; }
-    .qty-display { background-color: #38a169; color: white; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; }
-    .map-btn { background-color: var(--primary-color); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
-    .map-btn svg { width: 24px; height: 24px; }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
