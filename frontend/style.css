@@ -102,7 +102,7 @@ h1 {
   background-color: #e2e8f0;
 }
 
-.price-config {
+.price-config, .time-config {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -110,12 +110,12 @@ h1 {
     padding: 0.5rem 1rem;
     border-radius: 8px;
 }
-.price-config label {
+.price-config label, .time-config label {
     font-weight: 600;
     font-size: 0.9rem;
     color: #4a5568;
 }
-.price-config input {
+.price-config input, .time-config input {
     width: 90px;
     padding: 0.5rem;
     font-size: 1rem;
@@ -562,6 +562,7 @@ button[type="submit"]:hover {
 .delivery-card .card-body p strong { color: var(--text-color); }
 .card-actions { margin-top: 1.5rem; }
 .btn-entregue { background-color: #48bb78; }
+.btn-entregue:disabled { background-color: #a0aec0; cursor: not-allowed; }
 .no-deliveries { text-align: center; padding: 3rem; color: var(--gray-text); }
 .picado-tag { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
 .picado-tag.sim { background-color: #ef4444; }
@@ -572,6 +573,19 @@ button[type="submit"]:hover {
 .card-delivery-controls { display: flex; align-items: center; gap: 0.5rem; }
 .map-btn { background-color: var(--primary-color); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .map-btn svg { width: 24px; height: 24px; }
+.deliveries-section-title {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    color: #4a5568;
+    font-size: 1.2rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+.card-entregue {
+    opacity: 0.65;
+    background-color: #f7fafc;
+}
+
 
 /* ====================================================== */
 /* ESTILOS DE DRAG & DROP                                 */
@@ -595,12 +609,13 @@ button[type="submit"]:hover {
     transition: background-color 0.2s ease-in-out;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    background-color: #f7fafc;
+    background-color: #fff;
     overflow: hidden;
     flex-shrink: 0; /* Impede que os cards encolham */
 }
 .motoqueiro-card:hover {
     border-color: #cbd5e0;
+    background-color: #f7fafc;
 }
 .motoqueiro-card-content {
     display: flex;
@@ -636,7 +651,7 @@ button[type="submit"]:hover {
     flex-grow: 1;
     justify-content: flex-start;
     margin-top: 0;
-    background-color: #fff;
+    background-color: #f7fafc;
     padding: 1rem;
     align-self: stretch;
 }

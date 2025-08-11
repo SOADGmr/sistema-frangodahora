@@ -1,18 +1,13 @@
-# Dependências e arquivos de build
-node_modules/
-dist/
-build/
-.npm/
+# Dependências
+/node_modules
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Arquivos de log
+npm-debug.log
+yarn-debug.log
+yarn-error.log
 
-# Arquivos de ambiente
+# Banco de dados
+/database/frangodahora.db
+
+# Arquivos de ambiente (se você usar)
 .env
-.env.*.local
-
-# Arquivos de sistema
-.DS_Store
-Thumbs.db

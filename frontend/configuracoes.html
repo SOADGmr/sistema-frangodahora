@@ -10,7 +10,7 @@
 
   <header>
     <nav>
-      <a href="index.html">Painel de Pedidos</a>
+      <a href="pedidos.html">Painel de Pedidos</a>
       <a href="motoqueiros.html">Painel de Entregas</a>
       <a href="configuracoes.html" class="active">Configurações</a>
     </nav>
@@ -61,6 +61,7 @@
 
   <script>
     const API_URL = '/api';
+    let allBairros = []; // Armazena todos os bairros carregados
 
     const elements = {
         bairrosTbody: document.getElementById('bairrosTbody'),
@@ -85,6 +86,7 @@
     };
 
     const renderBairros = (bairros) => {
+        allBairros = bairros; // Atualiza a lista global
         elements.bairrosTbody.innerHTML = '';
         if (bairros.length === 0) {
             elements.bairrosTbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">Nenhum bairro configurado.</td></tr>';
@@ -97,6 +99,7 @@
                 <td>R$ ${bairro.taxa.toFixed(2)}</td>
                 <td>
                     <div class="action-buttons">
+                        <button class="action-btn edit-btn" data-id="${bairro.id}">Editar</button>
                         <button class="action-btn delete-btn" data-id="${bairro.id}">Excluir</button>
                     </div>
                 </td>
@@ -115,10 +118,22 @@
         }
     };
 
+    const openEditModal = (id) => {
+        const bairro = allBairros.find(b => b.id === id);
+        if (bairro) {
+            elements.bairroForm.reset();
+            elements.bairroIdInput.value = bairro.id;
+            elements.bairroNomeInput.value = bairro.bairro;
+            elements.bairroTaxaInput.value = bairro.taxa.toFixed(2);
+            elements.bairroModalTitle.textContent = 'Editar Bairro';
+            elements.bairroModal.classList.remove('hidden');
+        }
+    };
+
     const handleFormSubmit = async (e) => {
         e.preventDefault();
         const id = elements.bairroIdInput.value;
-        const bairro = {
+        const bairroData = {
             bairro: elements.bairroNomeInput.value,
             taxa: parseFloat(elements.bairroTaxaInput.value)
         };
@@ -130,7 +145,7 @@
             await fetchJSON(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(bairro)
+                body: JSON.stringify(bairroData)
             });
             elements.bairroModal.classList.add('hidden');
             loadBairros();
@@ -171,9 +186,12 @@
         elements.bairroForm.addEventListener('submit', handleFormSubmit);
 
         elements.bairrosTbody.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-btn')) {
-                const id = e.target.dataset.id;
-                handleDelete(id);
+            const target = e.target;
+            if (target.classList.contains('delete-btn')) {
+                handleDelete(parseInt(target.dataset.id, 10));
+            }
+            if (target.classList.contains('edit-btn')) {
+                openEditModal(parseInt(target.dataset.id, 10));
             }
         });
     }

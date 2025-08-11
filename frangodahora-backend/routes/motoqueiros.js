@@ -95,25 +95,35 @@ router.post('/operacao', (req, res) => {
 
 // Rota para obter motoqueiro por nome (para a tela de entregas)
 router.get('/nome/:nome', (req, res) => {
-    const data = new Date().toISOString().slice(0, 10);
+    // CORREÇÃO: Usa a função date() do SQLite para garantir que a data local seja usada,
+    // evitando problemas de fuso horário com o JavaScript.
     const sql = `
         SELECT m.id, m.nome, od.frangos_na_bag 
         FROM motoqueiros m
-        LEFT JOIN operacoes_diarias od ON m.id = od.motoqueiro_id AND od.data = ?
+        LEFT JOIN operacoes_diarias od ON m.id = od.motoqueiro_id AND od.data = date('now', 'localtime')
         WHERE m.nome = ?
     `;
-    db.get(sql, [data, req.params.nome], (err, motoqueiro) => {
+    db.get(sql, [req.params.nome], (err, motoqueiro) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!motoqueiro) return res.status(404).json({ error: 'Motoqueiro não encontrado ou não iniciou o dia.' });
 
         const pedidosSql = `
             SELECT * FROM pedidos 
-            WHERE motoqueiro_id = ? AND date(horario_pedido) = ? AND status = 'Em Rota'
-            ORDER BY rota_ordem, id
+            WHERE motoqueiro_id = ? AND date(horario_pedido) = date('now', 'localtime') AND (status = 'Em Rota' OR status = 'Entregue')
+            ORDER BY 
+                CASE status
+                    WHEN 'Em Rota' THEN 1
+                    WHEN 'Entregue' THEN 2
+                END,
+                rota_ordem, 
+                id
         `;
-        db.all(pedidosSql, [motoqueiro.id, data], (err, pedidos) => {
+        db.all(pedidosSql, [motoqueiro.id], (err, pedidos) => {
             if (err) return res.status(500).json({ error: err.message });
-            motoqueiro.pedidos_em_rota = pedidos;
+            
+            motoqueiro.pedidos_em_rota = pedidos.filter(p => p.status === 'Em Rota');
+            motoqueiro.pedidos_entregues = pedidos.filter(p => p.status === 'Entregue');
+            
             res.json(motoqueiro);
         });
     });

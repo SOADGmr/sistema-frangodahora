@@ -7,12 +7,12 @@ router.post('/', (req, res) => {
     const {
         cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone,
         quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento,
-        canal_venda, picado, observacao
+        canal_venda, picado, observacao, tempo_previsto // NOVO CAMPO
     } = req.body;
 
     const inserirPedido = () => {
-        const sql = `INSERT INTO pedidos (cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone, quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento, canal_venda, status, horario_pedido, picado, observacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendente', datetime('now', 'localtime'), ?, ?)`;
-        const params = [cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone, quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento, canal_venda, picado, observacao];
+        const sql = `INSERT INTO pedidos (cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone, quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento, canal_venda, status, horario_pedido, picado, observacao, tempo_previsto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendente', datetime('now', 'localtime'), ?, ?, ?)`;
+        const params = [cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone, quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento, canal_venda, picado, observacao, tempo_previsto];
         
         db.run(sql, params, function(err) {
             if (err) {
@@ -47,7 +47,15 @@ router.get('/', (req, res) => {
         FROM pedidos p 
         LEFT JOIN motoqueiros m ON p.motoqueiro_id = m.id
         WHERE date(p.horario_pedido) = ?
-        ORDER BY p.id DESC
+        ORDER BY 
+            CASE p.status
+                WHEN 'Pendente' THEN 1
+                WHEN 'Em Rota' THEN 2
+                WHEN 'Entregue' THEN 3
+                WHEN 'Cancelado' THEN 4
+                ELSE 5
+            END,
+            p.id DESC
     `;
     db.all(sql, [data], (err, rows) => {
         if (err) {
@@ -74,11 +82,11 @@ router.put('/:id', (req, res) => {
     const {
         cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone,
         quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento,
-        canal_venda, picado, observacao
+        canal_venda, picado, observacao, tempo_previsto // NOVO CAMPO
     } = req.body;
 
-    const sql = `UPDATE pedidos SET cliente_nome = ?, cliente_endereco = ?, cliente_bairro = ?, cliente_referencia = ?, cliente_telefone = ?, quantidade_frangos = ?, meio_frango = ?, taxa_entrega = ?, preco_total = ?, forma_pagamento = ?, canal_venda = ?, picado = ?, observacao = ? WHERE id = ?`;
-    const params = [cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone, quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento, canal_venda, picado, observacao, id];
+    const sql = `UPDATE pedidos SET cliente_nome = ?, cliente_endereco = ?, cliente_bairro = ?, cliente_referencia = ?, cliente_telefone = ?, quantidade_frangos = ?, meio_frango = ?, taxa_entrega = ?, preco_total = ?, forma_pagamento = ?, canal_venda = ?, picado = ?, observacao = ?, tempo_previsto = ? WHERE id = ?`;
+    const params = [cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone, quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento, canal_venda, picado, observacao, tempo_previsto, id];
 
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });

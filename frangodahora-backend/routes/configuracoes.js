@@ -32,6 +32,28 @@ router.post('/taxas', (req, res) => {
     });
 });
 
+// PUT: Atualizar uma taxa de bairro existente
+router.put('/taxas/:id', (req, res) => {
+    const { id } = req.params;
+    const { bairro, taxa } = req.body;
+    if (!bairro || taxa === undefined) {
+        return res.status(400).json({ error: "Por favor, forneça o nome do bairro e a taxa." });
+    }
+
+    const sql = `UPDATE taxas_bairro SET bairro = ?, taxa = ? WHERE id = ?`;
+    db.run(sql, [bairro, taxa, id], function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: "Bairro não encontrado." });
+        }
+        res.json({ message: 'Taxa do bairro atualizada com sucesso!', changes: this.changes });
+    });
+});
+
+
 // DELETE: Excluir uma taxa de bairro
 router.delete('/taxas/:id', (req, res) => {
     const { id } = req.params;

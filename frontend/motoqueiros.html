@@ -10,7 +10,7 @@
 
   <header>
     <nav>
-      <a href="index.html">Painel de Pedidos</a>
+      <a href="pedidos.html">Painel de Pedidos</a>
       <a href="motoqueiros.html" class="active">Painel de Entregas</a>
       <a href="configuracoes.html">Configurações</a>
     </nav>
@@ -130,7 +130,7 @@
     const fetchJSON = async (url, options = {}) => { const response = await fetch(url, options); if (!response.ok) { const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' })); throw new Error(errorData.error); } const text = await response.text(); return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; };
 
     const renderMotoqueiros = () => {
-        document.querySelectorAll('.motoqueiro-card').forEach(card => card.remove());
+        elements.motoqueirosList.innerHTML = '';
         activeMotoqueiros.forEach(m => {
             const card = document.createElement('div');
             card.className = 'motoqueiro-card';

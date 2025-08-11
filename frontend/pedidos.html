@@ -10,17 +10,25 @@
 
   <header>
     <nav>
-      <a href="index.html">Novo Pedido</a>
       <a href="pedidos.html" class="active">Painel de Pedidos</a>
       <a href="motoqueiros.html">Painel de Entregas</a>
+      <a href="configuracoes.html">Configurações</a>
     </nav>
     <div class="info-header">
       <div class="header-actions">
         <div class="price-config">
           <label for="preco_frango">Preço (R$):</label>
           <input type="number" id="preco_frango" step="0.50">
-          <button id="savePriceBtn" class="action-btn-header">Salvar</button>
         </div>
+        <div class="time-config">
+          <label for="tempo_entrega">Tempo Entrega (min):</label>
+          <input type="number" id="tempo_entrega">
+        </div>
+        <div class="time-config">
+          <label for="tempo_retirada">Tempo Retirada (min):</label>
+          <input type="number" id="tempo_retirada">
+        </div>
+        <button id="saveSettingsBtn" class="action-btn-header">Salvar</button>
       </div>
       
       <div class="date-navigator">
@@ -82,7 +90,11 @@
                     <div class="form-field delivery-only" id="canalVendaWrapper"><label for="canal_venda">Canal de Venda</label><select id="canal_venda" required></select></div>
                     <div class="form-field"><label for="cliente_nome">Nome do Cliente</label><input type="text" id="cliente_nome" placeholder="Nome para contato"></div>
                     <div class="form-field delivery-only" id="enderecoWrapper"><label for="cliente_endereco">Endereço</label><input type="text" id="cliente_endereco" placeholder="Rua, Número, Complemento"></div>
-                    <div class="form-field delivery-only" id="bairroWrapper"><label for="cliente_bairro">Bairro</label><input type="text" id="cliente_bairro" placeholder="Bairro da entrega"></div>
+                    <div class="form-field delivery-only" id="bairroWrapper">
+                        <label for="cliente_bairro">Bairro</label>
+                        <input type="text" id="cliente_bairro" placeholder="Digite ou selecione o bairro" list="bairros-datalist">
+                        <datalist id="bairros-datalist"></datalist>
+                    </div>
                     <div class="form-field delivery-only"><label for="cliente_referencia">Referência</label><input type="text" id="cliente_referencia" placeholder="Ex: Perto do mercado"></div>
                     <div class="form-field"><label for="cliente_telefone">Telefone</label><input type="tel" id="cliente_telefone" placeholder="(XX) XXXXX-XXXX"></div>
                     <div class="form-field"><label for="quantidade_frangos">Frangos Inteiros</label><input type="number" id="quantidade_frangos" required min="0" value="1" /></div>
@@ -141,6 +153,7 @@
   <script>
     const API_URL = '/api';
     let selectedDate = new Date();
+    let bairrosConfig = [];
 
     const elements = {
         pedidosTbody: document.getElementById('pedidosTbody'),
@@ -167,7 +180,9 @@
         motoqueiroSelect: document.getElementById('motoqueiro_select'),
         assignFormMessage: document.getElementById('assign-form-message'),
         precoFrangoInput: document.getElementById('preco_frango'),
-        savePriceBtn: document.getElementById('savePriceBtn'),
+        tempoEntregaInput: document.getElementById('tempo_entrega'),
+        tempoRetiradaInput: document.getElementById('tempo_retirada'),
+        saveSettingsBtn: document.getElementById('saveSettingsBtn'),
         quantidadeFrangosInput: document.getElementById('quantidade_frangos'),
         precoTotalInput: document.getElementById('preco_total'),
         pedidosTitle: document.getElementById('pedidos-title'),
@@ -177,6 +192,8 @@
         meioFrangoCheckbox: document.getElementById('meio_frango'),
         taxaEntregaInput: document.getElementById('taxa_entrega'),
         taxaEntregaWrapper: document.getElementById('taxaEntregaWrapper'),
+        clienteBairroInput: document.getElementById('cliente_bairro'),
+        bairrosDatalist: document.getElementById('bairros-datalist'),
     };
 
     const formatDateToYYYYMMDD = (date) => {
@@ -190,10 +207,34 @@
     const updateDateDisplay = () => { elements.currentDateDisplay.textContent = formatDisplayDate(selectedDate); elements.pedidosTitle.textContent = `Pedidos de ${formatDisplayDate(selectedDate)}`; };
     const fetchJSON = async (url, options = {}) => { const response = await fetch(url, options); if (!response.ok) { const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' })); throw new Error(errorData.error); } const text = await response.text(); return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; };
     const fetchEstoque = async (dateString) => { try { const data = await fetchJSON(`${API_URL}/estoque?data=${dateString}`); elements.estoqueDisplay.textContent = `Estoque: ${data.quantidade_atual} / ${data.quantidade_inicial}`; elements.estoqueDisplay.style.color = data.quantidade_atual > 10 ? '#2f855a' : '#c53030'; } catch (error) { elements.estoqueDisplay.textContent = 'Erro ao carregar estoque'; } };
-    const fetchPrecoFrango = async () => { try { const data = await fetchJSON(`${API_URL}/configuracoes/preco_frango`); elements.precoFrangoInput.value = parseFloat(data.valor).toFixed(2); } catch (error) { console.error('Erro ao buscar preço do frango:', error); } };
+    
+    const fetchSettings = async () => {
+        try {
+            const [preco, tempoEntrega, tempoRetirada] = await Promise.all([
+                fetchJSON(`${API_URL}/configuracoes/preco_frango`),
+                fetchJSON(`${API_URL}/configuracoes/tempo_entrega`),
+                fetchJSON(`${API_URL}/configuracoes/tempo_retirada`)
+            ]);
+            elements.precoFrangoInput.value = parseFloat(preco.valor).toFixed(2);
+            elements.tempoEntregaInput.value = parseInt(tempoEntrega.valor, 10);
+            elements.tempoRetiradaInput.value = parseInt(tempoRetirada.valor, 10);
+        } catch (error) {
+            console.error('Erro ao buscar configurações:', error);
+        }
+    };
+
     const fetchPedidos = async (dateString) => { try { const pedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`); renderPedidos(pedidos); } catch (error) { elements.pedidosTbody.innerHTML = `<tr><td colspan="8">${error.message}</td></tr>`; } };
     const fetchDataForDate = (date) => { const dateString = formatDateToYYYYMMDD(date); updateDateDisplay(); fetchPedidos(dateString); fetchEstoque(dateString); };
     
+    const fetchBairros = async () => {
+        try {
+            bairrosConfig = await fetchJSON(`${API_URL}/configuracoes/taxas`);
+            elements.bairrosDatalist.innerHTML = bairrosConfig.map(b => `<option value="${b.bairro}">`).join('');
+        } catch (error) {
+            console.error("Erro ao carregar bairros:", error);
+        }
+    };
+
     const renderPedidos = (pedidos) => {
         elements.pedidosTbody.innerHTML = '';
         if (pedidos.length === 0) {
@@ -351,16 +392,18 @@
             dadosPedido.cliente_endereco = 'Retirada'; 
             dadosPedido.cliente_bairro = ''; 
             dadosPedido.taxa_entrega = 0;
+            dadosPedido.tempo_previsto = parseInt(elements.tempoRetiradaInput.value, 10);
         } else { 
             dadosPedido.canal_venda = elements.canalVendaSelect.value; 
             dadosPedido.cliente_endereco = document.getElementById('cliente_endereco').value; 
             dadosPedido.cliente_bairro = document.getElementById('cliente_bairro').value; 
+            dadosPedido.tempo_previsto = parseInt(elements.tempoEntregaInput.value, 10);
         } 
         try { 
             const result = await fetchJSON(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dadosPedido), }); 
             elements.pedidoFormMessage.textContent = result.message; 
             elements.pedidoFormMessage.className = 'form-message success'; 
-            setTimeout(() => { closeModal(elements.pedidoModal); fetchDataForDate(selectedDate); }, 1000); 
+            setTimeout(() => { closeModal(elements.pedidoModal); fetchDataForDate(selectedDate); fetchBairros(); }, 1000); 
         } catch (error) { 
             elements.pedidoFormMessage.textContent = `Erro: ${error.message}`; 
             elements.pedidoFormMessage.className = 'form-message error'; 
@@ -376,7 +419,23 @@
         if (target.classList.contains('retirou-btn')) { if (confirm(`Confirmar a retirada do pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/retirou`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao confirmar retirada: ${error.message}`); } } }
     };
 
-    const handleSavePrice = async () => { const novoPreco = parseFloat(elements.precoFrangoInput.value).toFixed(2); try { await fetchJSON(`${API_URL}/configuracoes/preco_frango`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: novoPreco }), }); alert('Preço do frango atualizado com sucesso!'); } catch (error) { alert(`Erro ao salvar preço: ${error.message}`); } };
+    const handleSaveSettings = async () => {
+        const precoFrango = parseFloat(elements.precoFrangoInput.value).toFixed(2);
+        const tempoEntrega = parseInt(elements.tempoEntregaInput.value, 10);
+        const tempoRetirada = parseInt(elements.tempoRetiradaInput.value, 10);
+
+        try {
+            await Promise.all([
+                fetchJSON(`${API_URL}/configuracoes/preco_frango`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: precoFrango }) }),
+                fetchJSON(`${API_URL}/configuracoes/tempo_entrega`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: tempoEntrega }) }),
+                fetchJSON(`${API_URL}/configuracoes/tempo_retirada`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: tempoRetirada }) })
+            ]);
+            alert('Configurações salvas com sucesso!');
+        } catch (error) {
+            alert(`Erro ao salvar configurações: ${error.message}`);
+        }
+    };
+
     const handleEstoqueSubmit = async (e) => { e.preventDefault(); const quantidade = Number(document.getElementById('quantidade_inicial').value); try { const result = await fetchJSON(`${API_URL}/estoque`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantidade, data: formatDateToYYYYMMDD(selectedDate) }) }); elements.estoqueFormMessage.textContent = result.message; elements.estoqueFormMessage.className = 'form-message success'; setTimeout(() => { closeModal(elements.estoqueModal); fetchDataForDate(selectedDate); }, 1000); } catch (error) { elements.estoqueFormMessage.textContent = `Erro: ${error.message}`; elements.estoqueFormMessage.className = 'form-message error'; } };
     const handleAssignSubmit = async (e) => { e.preventDefault(); const pedidoId = e.target.dataset.pedidoId; const motoqueiroId = elements.motoqueiroSelect.value; if (!motoqueiroId) { elements.assignFormMessage.textContent = 'Por favor, selecione um motoqueiro.'; elements.assignFormMessage.className = 'form-message error'; return; } try { const result = await fetchJSON(`${API_URL}/pedidos/${pedidoId}/atribuir`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motoqueiroId }), }); elements.assignFormMessage.textContent = result.message; elements.assignFormMessage.className = 'form-message success'; setTimeout(() => { closeModal(elements.assignModal); fetchDataForDate(selectedDate); }, 1000); } catch (error) { elements.assignFormMessage.textContent = `Erro: ${error.message}`; elements.assignFormMessage.className = 'form-message error'; } };
     const changeDate = (days) => { selectedDate.setDate(selectedDate.getDate() + days); fetchDataForDate(selectedDate); };
@@ -395,16 +454,30 @@
         elements.pedidoForm.addEventListener('submit', handleFormSubmit);
         elements.estoqueForm.addEventListener('submit', handleEstoqueSubmit);
         elements.pedidosTbody.addEventListener('click', handleTableClick);
-        elements.savePriceBtn.addEventListener('click', handleSavePrice);
+        elements.saveSettingsBtn.addEventListener('click', handleSaveSettings);
         elements.tipoPedidoSelect.addEventListener('change', handleTipoPedidoChange);
         elements.assignForm.addEventListener('submit', handleAssignSubmit);
         elements.prevDayBtn.addEventListener('click', () => changeDate(-1));
         elements.nextDayBtn.addEventListener('click', () => changeDate(1));
         elements.meioFrangoCheckbox.addEventListener('change', updateTotalPrice);
         elements.taxaEntregaInput.addEventListener('input', updateTotalPrice);
+        elements.clienteBairroInput.addEventListener('input', (e) => {
+            const bairroSelecionado = bairrosConfig.find(b => b.bairro.toLowerCase() === e.target.value.toLowerCase());
+            if (bairroSelecionado) {
+                elements.taxaEntregaInput.value = bairroSelecionado.taxa.toFixed(2);
+                updateTotalPrice();
+            }
+        });
     }
 
-    function init() { populateSelect('canal_venda', ['Telefone', 'Porta']); populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago']); fetchDataForDate(selectedDate); fetchPrecoFrango(); setupEventListeners(); }
+    function init() { 
+        populateSelect('canal_venda', ['Telefone', 'Porta']); 
+        populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago']); 
+        fetchDataForDate(selectedDate); 
+        fetchSettings();
+        fetchBairros();
+        setupEventListeners(); 
+    }
     document.addEventListener('DOMContentLoaded', init);
   </script>
 

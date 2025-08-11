@@ -11,7 +11,7 @@
   <div id="app-container" class="container">
     <!-- TELA DE LOGIN -->
     <div id="login-view">
-      <h1>🐔 Frangolândia Entregas</h1>
+      <h1>🐔 Frango da Hora Entregas</h1>
       <form id="login-form">
         <input type="text" id="motoqueiro-nome" class="input-field" placeholder="Digite seu nome" required>
         <button type="submit" class="btn">Entrar</button>
@@ -66,25 +66,23 @@
       return response.json();
     };
 
-    const renderDeliveries = (motoqueiro) => {
-      elements.deliveriesList.innerHTML = '';
-      if (!motoqueiro || motoqueiro.pedidos_em_rota.length === 0) {
-        elements.deliveriesList.innerHTML = '<p class="no-deliveries">Nenhuma entrega no momento. Bom descanso!</p>';
-        return;
-      }
-
-      motoqueiro.pedidos_em_rota.forEach(pedido => {
+    const createDeliveryCard = (pedido, isDelivered) => {
         const card = document.createElement('div');
         card.className = 'delivery-card';
+        if (isDelivered) {
+            card.classList.add('card-entregue');
+        }
+
         const picadoClass = pedido.picado ? 'sim' : 'nao';
-        
         const fullAddress = `${pedido.cliente_endereco}, ${pedido.cliente_bairro}`;
         const encodedAddress = encodeURIComponent(fullAddress);
         const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
-        
-        // CORREÇÃO AQUI: Usa 'pedido.quantidade_frangos' em vez de 'pedido.quantidade'
         const totalFrangos = pedido.quantidade_frangos + (pedido.meio_frango ? 0.5 : 0);
-        
+
+        const buttonHtml = isDelivered 
+            ? `<button class="btn btn-entregue" disabled>Entregue</button>`
+            : `<button class="btn btn-entregue" data-pedido-id="${pedido.id}">Marcar como Entregue</button>`;
+
         card.innerHTML = `
           <div class="card-header">
             <h3>
@@ -109,11 +107,40 @@
             </div>
           </div>
           <div class="card-actions">
-            <button class="btn btn-entregue" data-pedido-id="${pedido.id}">Marcar como Entregue</button>
+            ${buttonHtml}
           </div>
         `;
-        elements.deliveriesList.appendChild(card);
-      });
+        return card;
+    };
+
+    const renderDeliveries = (motoqueiro) => {
+      elements.deliveriesList.innerHTML = '';
+      const hasPendingDeliveries = motoqueiro.pedidos_em_rota && motoqueiro.pedidos_em_rota.length > 0;
+      const hasFinishedDeliveries = motoqueiro.pedidos_entregues && motoqueiro.pedidos_entregues.length > 0;
+
+      if (!hasPendingDeliveries && !hasFinishedDeliveries) {
+        elements.deliveriesList.innerHTML = '<p class="no-deliveries">Nenhuma entrega no momento. Bom descanso!</p>';
+        return;
+      }
+
+      if (hasPendingDeliveries) {
+        motoqueiro.pedidos_em_rota.forEach(pedido => {
+            const card = createDeliveryCard(pedido, false);
+            elements.deliveriesList.appendChild(card);
+        });
+      }
+
+      if (hasFinishedDeliveries) {
+        const finishedTitle = document.createElement('h3');
+        finishedTitle.className = 'deliveries-section-title';
+        finishedTitle.textContent = 'Entregas Finalizadas';
+        elements.deliveriesList.appendChild(finishedTitle);
+
+        motoqueiro.pedidos_entregues.forEach(pedido => {
+            const card = createDeliveryCard(pedido, true);
+            elements.deliveriesList.appendChild(card);
+        });
+      }
     };
 
     const handleLogin = async (e) => {
@@ -138,7 +165,7 @@
     };
 
     const handleMarkAsDelivered = async (e) => {
-      if (!e.target.classList.contains('btn-entregue')) return;
+      if (!e.target.classList.contains('btn-entregue') || e.target.disabled) return;
       const pedidoId = e.target.dataset.pedidoId;
       if (confirm(`Confirmar a entrega do pedido #${pedidoId}?`)) {
         try {
