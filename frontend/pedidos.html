@@ -17,15 +17,15 @@
     <div class="info-header">
       <div class="header-actions">
         <div class="price-config">
-          <label for="preco_frango">Preço (R$):</label>
+          <label for="preco_frango">Preço (R$)</label>
           <input type="number" id="preco_frango" step="0.50">
         </div>
         <div class="time-config">
-          <label for="tempo_entrega">Tempo Entrega (min):</label>
+          <label for="tempo_entrega">T. Entrega (min)</label>
           <input type="number" id="tempo_entrega">
         </div>
         <div class="time-config">
-          <label for="tempo_retirada">Tempo Retirada (min):</label>
+          <label for="tempo_retirada">T. Retirada (min)</label>
           <input type="number" id="tempo_retirada">
         </div>
         <button id="saveSettingsBtn" class="action-btn-header">Salvar</button>
@@ -203,7 +203,17 @@
         return `${year}-${month}-${day}`;
     };
 
-    const formatDisplayDate = (date) => { const today = new Date(); return formatDateToYYYYMMDD(date) === formatDateToYYYYMMDD(today) ? "Hoje" : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); };
+    // ALTERAÇÃO: Formato da data para "DD/MÊS"
+    const formatDisplayDate = (date) => {
+        const today = new Date();
+        if (formatDateToYYYYMMDD(date) === formatDateToYYYYMMDD(today)) {
+            return "Hoje";
+        }
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
+        return `${day}/${month}`;
+    };
+
     const updateDateDisplay = () => { elements.currentDateDisplay.textContent = formatDisplayDate(selectedDate); elements.pedidosTitle.textContent = `Pedidos de ${formatDisplayDate(selectedDate)}`; };
     const fetchJSON = async (url, options = {}) => { const response = await fetch(url, options); if (!response.ok) { const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' })); throw new Error(errorData.error); } const text = await response.text(); return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; };
     const fetchEstoque = async (dateString) => { try { const data = await fetchJSON(`${API_URL}/estoque?data=${dateString}`); elements.estoqueDisplay.textContent = `Estoque: ${data.quantidade_atual} / ${data.quantidade_inicial}`; elements.estoqueDisplay.style.color = data.quantidade_atual > 10 ? '#2f855a' : '#c53030'; } catch (error) { elements.estoqueDisplay.textContent = 'Erro ao carregar estoque'; } };
