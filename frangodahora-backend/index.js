@@ -8,6 +8,7 @@ const pedidosRoutes = require('./routes/pedidos');
 const motoqueirosRoutes = require('./routes/motoqueiros');
 const estoqueRoutes = require('./routes/estoque');
 const configuracoesRoutes = require('./routes/configuracoes');
+const authRoutes = require('./routes/auth'); // NOVO: Importa a rota de autenticação
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/motoqueiros', motoqueirosRoutes);
 app.use('/api/estoque', estoqueRoutes);
 app.use('/api/configuracoes', configuracoesRoutes);
+app.use('/api/auth', authRoutes); // NOVO: Usa a rota de autenticação
 
 // Rota principal da API (opcional)
 app.get('/api', (req, res) => {

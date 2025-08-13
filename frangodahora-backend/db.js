@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const bcrypt = require('bcrypt');
 
 // CORREÇÃO: O caminho agora aponta para o subdiretório 'database'
 const dbPath = path.resolve(__dirname, 'database', 'frangodahora.db');
@@ -23,6 +24,26 @@ const db = new sqlite3.Database(dbPath, (err) => {
 function criarTabelas() {
   db.serialize(() => {
     console.log("Verificando e criando tabelas...");
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario TEXT NOT NULL UNIQUE,
+        senha TEXT NOT NULL,
+        cargo TEXT NOT NULL CHECK(cargo IN ('Admin', 'Moto'))
+      )
+    `);
+
+    // Insere o usuário Admin padrão se ele não existir
+    const saltRounds = 10;
+    const adminPassword = 'admin123';
+    bcrypt.hash(adminPassword, saltRounds, (err, hash) => {
+        if (err) {
+            console.error("Erro ao gerar hash da senha:", err);
+            return;
+        }
+        db.run(`INSERT OR IGNORE INTO usuarios (usuario, senha, cargo) VALUES (?, ?, ?)`, ['admin', hash, 'Admin']);
+    });
 
     db.run(`
       CREATE TABLE IF NOT EXISTS pedidos (

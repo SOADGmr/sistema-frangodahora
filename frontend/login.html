@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Frango da Hora</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Estilos específicos para a página de login */
+    body.login-page {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f4f6f8;
+    }
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+      padding: 2.5rem;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .login-container h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .login-container p {
+      color: #718096;
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body class="login-page">
+
+  <div class="login-container">
+    <h1>🐔 Acesso Restrito</h1>
+    <p>Faça login para continuar</p>
+    <form id="login-form">
+      <div class="form-field" style="text-align: left;">
+        <label for="usuario">Usuário</label>
+        <input type="text" id="usuario" required placeholder="Digite seu usuário">
+      </div>
+      <div class="form-field" style="text-align: left;">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" required placeholder="Digite sua senha">
+      </div>
+      <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">Entrar</button>
+    </form>
+    <div id="login-message" class="form-message" style="margin-top: 1.5rem;"></div>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+    const loginForm = document.getElementById('login-form');
+    const loginMessage = document.getElementById('login-message');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginMessage.textContent = '';
+      loginMessage.className = 'form-message';
+
+      const usuario = document.getElementById('usuario').value;
+      const senha = document.getElementById('senha').value;
+
+      try {
+        const response = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario, senha }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Erro desconhecido');
+        }
+
+        // Armazena os dados do usuário no sessionStorage
+        sessionStorage.setItem('usuarioLogado', JSON.stringify(data.usuario));
+
+        // Redireciona com base no cargo
+        if (data.usuario.cargo === 'Admin') {
+          window.location.href = 'pedidos.html';
+        } else if (data.usuario.cargo === 'Moto') {
+          // Adapta a URL para passar o nome do usuário para a tela de entregas
+          window.location.href = `entregas.html?motoqueiro=${encodeURIComponent(data.usuario.usuario)}`;
+        } else {
+            throw new Error('Cargo de usuário não reconhecido.');
+        }
+
+      } catch (error) {
+        loginMessage.textContent = error.message;
+        loginMessage.className = 'form-message error';
+      }
+    });
+  </script>
+
+</body>
+</html>
