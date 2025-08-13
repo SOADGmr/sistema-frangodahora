@@ -57,6 +57,20 @@
     const loginForm = document.getElementById('login-form');
     const loginMessage = document.getElementById('login-message');
 
+    // NOVO: Verifica se o usuário já está logado ao carregar a página
+    document.addEventListener('DOMContentLoaded', () => {
+        const usuarioLogadoJSON = sessionStorage.getItem('usuarioLogado');
+        if (usuarioLogadoJSON) {
+            const usuario = JSON.parse(usuarioLogadoJSON);
+            if (usuario.cargo === 'Admin') {
+                window.location.href = 'pedidos.html';
+            } else if (usuario.cargo === 'Moto') {
+                window.location.href = 'entregas.html';
+            }
+        }
+    });
+
+
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       loginMessage.textContent = '';
@@ -81,14 +95,22 @@
         // Armazena os dados do usuário no sessionStorage
         sessionStorage.setItem('usuarioLogado', JSON.stringify(data.usuario));
 
-        // Redireciona com base no cargo
-        if (data.usuario.cargo === 'Admin') {
-          window.location.href = 'pedidos.html';
-        } else if (data.usuario.cargo === 'Moto') {
-          // Adapta a URL para passar o nome do usuário para a tela de entregas
-          window.location.href = `entregas.html?motoqueiro=${encodeURIComponent(data.usuario.usuario)}`;
+        // NOVO: Lógica de redirecionamento inteligente
+        const params = new URLSearchParams(window.location.search);
+        const redirectUrl = params.get('redirect');
+
+        if (redirectUrl) {
+            // Se veio de uma página específica, volta para ela
+            window.location.href = redirectUrl;
         } else {
-            throw new Error('Cargo de usuário não reconhecido.');
+            // Senão, vai para a página padrão do cargo
+            if (data.usuario.cargo === 'Admin') {
+                window.location.href = 'pedidos.html';
+            } else if (data.usuario.cargo === 'Moto') {
+                window.location.href = 'entregas.html';
+            } else {
+                throw new Error('Cargo de usuário não reconhecido.');
+            }
         }
 
       } catch (error) {

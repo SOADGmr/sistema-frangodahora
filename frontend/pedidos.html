@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Painel de Pedidos - Frango da Hora</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- NOVO: Script de autenticação -->
+  <script src="auth.js"></script>
 </head>
 <body>
 
@@ -13,6 +15,8 @@
       <a href="pedidos.html" class="active">Painel de Pedidos</a>
       <a href="motoqueiros.html">Painel de Entregas</a>
       <a href="configuracoes.html">Configurações</a>
+      <!-- NOVO: Botão de Sair -->
+      <a href="#" id="logout-btn" style="margin-left: auto; color: #e53e3e;">Sair</a>
     </nav>
     <div class="info-header">
       <div class="header-actions">
@@ -151,6 +155,9 @@
   </div>
 
   <script>
+    // NOVO: Verifica a autenticação antes de tudo
+    const usuarioLogado = checkAuth(['Admin']);
+
     const API_URL = '/api';
     let selectedDate = new Date();
     let bairrosConfig = [];
@@ -195,6 +202,7 @@
         taxaEntregaWrapper: document.getElementById('taxaEntregaWrapper'),
         clienteBairroInput: document.getElementById('cliente_bairro'),
         bairrosDatalist: document.getElementById('bairros-datalist'),
+        logoutBtn: document.getElementById('logout-btn'), // NOVO
     };
 
     const formatDateToYYYYMMDD = (date) => {
@@ -525,9 +533,16 @@
                 updateTotalPrice();
             }
         });
+        // NOVO: Event listener para o botão de logout
+        elements.logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
     }
 
     function init() { 
+        // A verificação de auth já foi feita no topo do script.
+        // Se o script chegou até aqui, o usuário está autorizado.
         populateSelect('canal_venda', ['Telefone', 'Porta']); 
         populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago']); 
         fetchDataForDate(selectedDate); 
