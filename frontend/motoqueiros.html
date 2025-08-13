@@ -91,6 +91,7 @@
     let allPedidos = [];
     let activeMotoqueiros = []; 
     let masterMotoqueiros = []; 
+    let modalPrazoInterval;
 
     const elements = {
         motoqueirosList: document.getElementById('motoqueiros-list'),
@@ -125,7 +126,6 @@
         return `${year}-${month}-${day}`;
     };
 
-    // ALTERAÇÃO: Formato da data para "DD/MÊS"
     const formatDisplayDate = (date) => {
         const today = new Date();
         if (formatDateToYYYYMMDD(date) === formatDateToYYYYMMDD(today)) {
@@ -134,6 +134,30 @@
         const day = String(date.getDate()).padStart(2, '0');
         const month = date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
         return `${day}/${month}`;
+    };
+    
+    // NOVO: Função para calcular e formatar o prazo
+    const calcularPrazo = (horarioPedido, tempoPrevisto) => {
+        if (!horarioPedido || !tempoPrevisto) return '---';
+
+        const agora = new Date();
+        const horaPedidoDate = new Date(horarioPedido);
+        const horaPrevista = new Date(horaPedidoDate.getTime() + tempoPrevisto * 60000);
+
+        const diff = horaPrevista - agora;
+        const isAtrasado = diff < 0;
+        const diffAbs = Math.abs(diff);
+
+        const horas = Math.floor(diffAbs / (1000 * 60 * 60));
+        const minutos = Math.floor((diffAbs % (1000 * 60 * 60)) / (1000 * 60));
+
+        const hFormat = String(horas).padStart(2, '0');
+        const mFormat = String(minutos).padStart(2, '0');
+        
+        const classe = isAtrasado ? 'prazo-atrasado' : 'prazo-ok';
+        const sinal = isAtrasado ? '-' : '';
+
+        return `<span class="prazo ${classe}">${sinal}${hFormat}:${mFormat}</span>`;
     };
 
     const updateDateDisplay = () => { elements.currentDateDisplay.textContent = formatDisplayDate(selectedDate); };
@@ -199,6 +223,7 @@
     };
     
     const openDetailsModal = (motoqueiroId) => {
+        if (modalPrazoInterval) clearInterval(modalPrazoInterval);
         const motoqueiro = activeMotoqueiros.find(m => m.id == motoqueiroId);
         if (!motoqueiro) return;
         const todosPedidosDoDia = [...motoqueiro.pedidos_em_rota, ...motoqueiro.pedidos_entregues];
@@ -242,7 +267,10 @@
                 li.className = 'pedido-item route-draggable';
                 li.draggable = true;
                 li.dataset.pedidoId = p.id;
-                li.innerHTML = `<div class="pedido-info-detailed"><div class="detailed-info-header"><span>#${p.id} - ${p.cliente_nome || 'N/A'}</span><strong>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</strong></div><small class="detailed-info-address">${p.cliente_endereco}, ${p.cliente_bairro || ''}</small><div class="detailed-info-footer"><small>📞 ${p.cliente_telefone || 'N/A'}</small><small>💳 ${p.forma_pagamento}</small></div></div><button class="entregar-btn" data-id="${p.id}">Entregue</button>`;
+                li.dataset.horarioPedido = p.horario_pedido;
+                li.dataset.tempoPrevisto = p.tempo_previsto;
+                const prazoHtml = calcularPrazo(p.horario_pedido, p.tempo_previsto);
+                li.innerHTML = `<div class="pedido-info-detailed"><div class="detailed-info-header"><span>#${p.id} - ${p.cliente_nome || 'N/A'}</span><strong class="prazo-cell">${prazoHtml}</strong></div><small class="detailed-info-address">${p.cliente_endereco}, ${p.cliente_bairro || ''}</small><div class="detailed-info-footer"><small>📞 ${p.cliente_telefone || 'N/A'}</small><small>💳 ${p.forma_pagamento}</small></div></div><button class="entregar-btn" data-id="${p.id}">Entregue</button>`;
                 elements.detailsPedidosList.appendChild(li);
             });
         }
@@ -267,6 +295,16 @@
                 <button class="save-route-btn" data-id="${motoqueiro.id}">Salvar Rota</button>
             </div>`;
         elements.detailsModal.classList.remove('hidden');
+        
+        // Inicia o atualizador de prazo para o modal
+        modalPrazoInterval = setInterval(() => {
+            document.querySelectorAll('#details-pedidos-list .route-draggable').forEach(li => {
+                const prazoCell = li.querySelector('.prazo-cell');
+                if (prazoCell) {
+                    prazoCell.innerHTML = calcularPrazo(li.dataset.horarioPedido, li.dataset.tempoPrevisto);
+                }
+            });
+        }, 60000);
     };
 
     const handleStartDay = async (e) => {
@@ -486,9 +524,15 @@
             renderAllPedidos(e.target.value);
         });
         
-        elements.closeDetailsModalBtn.addEventListener('click', () => elements.detailsModal.classList.add('hidden'));
+        elements.closeDetailsModalBtn.addEventListener('click', () => {
+            elements.detailsModal.classList.add('hidden');
+            clearInterval(modalPrazoInterval); // Limpa o intervalo ao fechar
+        });
         elements.detailsModal.addEventListener('click', (e) => { 
-            if (e.target === elements.detailsModal) elements.detailsModal.classList.add('hidden');
+            if (e.target === elements.detailsModal) {
+                elements.detailsModal.classList.add('hidden');
+                clearInterval(modalPrazoInterval); // Limpa o intervalo ao fechar
+            }
         });
         
         elements.motoqueirosList.addEventListener('click', (e) => { 

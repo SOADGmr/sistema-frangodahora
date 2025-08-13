@@ -43,6 +43,8 @@
 
   <script>
     const API_URL = '/api';
+    let prazoUpdateInterval;
+
     const elements = {
       loginView: document.getElementById('login-view'),
       deliveriesView: document.getElementById('deliveries-view'),
@@ -65,6 +67,31 @@
       }
       return response.json();
     };
+    
+    // NOVO: Função para calcular e formatar o prazo
+    const calcularPrazo = (horarioPedido, tempoPrevisto) => {
+        if (!horarioPedido || !tempoPrevisto) return '---';
+
+        const agora = new Date();
+        const horaPedidoDate = new Date(horarioPedido);
+        const horaPrevista = new Date(horaPedidoDate.getTime() + tempoPrevisto * 60000);
+
+        const diff = horaPrevista - agora;
+        const isAtrasado = diff < 0;
+        const diffAbs = Math.abs(diff);
+
+        const horas = Math.floor(diffAbs / (1000 * 60 * 60));
+        const minutos = Math.floor((diffAbs % (1000 * 60 * 60)) / (1000 * 60));
+
+        const hFormat = String(horas).padStart(2, '0');
+        const mFormat = String(minutos).padStart(2, '0');
+        
+        const classe = isAtrasado ? 'prazo-atrasado' : 'prazo-ok';
+        const sinal = isAtrasado ? '-' : '';
+
+        return `<span class="prazo ${classe}">${sinal}${hFormat}:${mFormat}</span>`;
+    };
+
 
     const createDeliveryCard = (pedido, isDelivered) => {
         const card = document.createElement('div');
@@ -72,6 +99,11 @@
         if (isDelivered) {
             card.classList.add('card-entregue');
         }
+        
+        // Adiciona atributos para atualização do prazo
+        card.dataset.horarioPedido = pedido.horario_pedido;
+        card.dataset.tempoPrevisto = pedido.tempo_previsto;
+        card.dataset.pedidoId = pedido.id;
 
         const picadoClass = pedido.picado ? 'sim' : 'nao';
         const fullAddress = `${pedido.cliente_endereco}, ${pedido.cliente_bairro}`;
@@ -82,6 +114,8 @@
         const buttonHtml = isDelivered 
             ? `<button class="btn btn-entregue" disabled>Entregue</button>`
             : `<button class="btn btn-entregue" data-pedido-id="${pedido.id}">Marcar como Entregue</button>`;
+            
+        const prazoHtml = isDelivered ? '' : calcularPrazo(pedido.horario_pedido, pedido.tempo_previsto);
 
         card.innerHTML = `
           <div class="card-header">
@@ -89,7 +123,10 @@
               <span class="picado-tag ${picadoClass}" title="${pedido.picado ? 'Frango Picado' : 'Frango Inteiro'}"></span>
               #${pedido.id} - ${pedido.cliente_nome}
             </h3>
-            <strong>R$ ${pedido.preco_total.toFixed(2)}</strong>
+            <div style="text-align: right;">
+                <strong>R$ ${pedido.preco_total.toFixed(2)}</strong>
+                <div class="prazo-cell">${prazoHtml}</div>
+            </div>
           </div>
           <div class="card-body">
             <p><strong>Endereço:</strong> ${pedido.cliente_endereco}, ${pedido.cliente_bairro}</p>
@@ -141,6 +178,22 @@
             elements.deliveriesList.appendChild(card);
         });
       }
+      startPrazoUpdater();
+    };
+
+    const startPrazoUpdater = () => {
+        if (prazoUpdateInterval) clearInterval(prazoUpdateInterval);
+        prazoUpdateInterval = setInterval(() => {
+            document.querySelectorAll('#deliveries-list .delivery-card[data-pedido-id]').forEach(card => {
+                // Apenas atualiza se não for um card de entrega já finalizada
+                if (!card.classList.contains('card-entregue')) {
+                    const prazoCell = card.querySelector('.prazo-cell');
+                    if (prazoCell) {
+                        prazoCell.innerHTML = calcularPrazo(card.dataset.horarioPedido, card.dataset.tempoPrevisto);
+                    }
+                }
+            });
+        }, 60000); // Atualiza a cada 1 minuto
     };
 
     const handleLogin = async (e) => {
@@ -159,6 +212,7 @@
 
     const handleLogout = () => {
       localStorage.removeItem('motoqueiroNome');
+      if (prazoUpdateInterval) clearInterval(prazoUpdateInterval);
       elements.loginView.classList.remove('hidden');
       elements.deliveriesView.classList.add('hidden');
       elements.motoqueiroNomeInput.value = '';

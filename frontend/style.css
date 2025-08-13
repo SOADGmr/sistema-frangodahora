@@ -236,6 +236,19 @@ tr.status-row-cancelado {
 .status-entregue { background-color: #c6f6d5; color: #2f855a; }
 .status-cancelado { background-color: #fed7d7; color: #9b2c2c; }
 
+/* NOVO: Estilos para o Prazo */
+.prazo {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+.prazo-ok {
+    color: #2f855a; /* Verde */
+}
+.prazo-atrasado {
+    color: #c53030; /* Vermelho */
+}
+
+
 .action-buttons {
     display: flex;
     gap: 0.5rem;
@@ -525,12 +538,48 @@ button[type="submit"]:hover {
 .pedido-info span { font-weight: 600; }
 .pedido-info small { color: #718096; }
 .pedido-qtd { font-weight: bold; color: #4a5568; }
-.entregar-btn { background-color: #48bb78; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
+.entregar-btn { background-color: #48bb78; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; flex-shrink: 0; }
 .entregar-btn:hover { background-color: #38a169; }
 .no-pedidos { text-align: center; color: #718096; padding: 2rem; }
 #details-modal .form-container { max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 .modal-header-details { padding: 2rem 2rem 1rem 2rem; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
 #details-pedidos-list { overflow-y: auto; flex-grow: 1; padding: 0 2rem; }
+
+/* ALTERAÇÃO: Estilos para o item de pedido detalhado no modal */
+.pedido-info-detailed {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    gap: 0.25rem;
+}
+.detailed-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+}
+.detailed-info-header span {
+    font-weight: 600;
+}
+.detailed-info-address-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+.detailed-info-address {
+    color: #718096;
+    font-size: 0.9rem;
+    flex-grow: 1;
+}
+.detailed-info-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: #4a5568;
+    margin-top: 0.5rem;
+}
+
 .modal-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .modal-stats-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1rem; margin-top: 1rem; }
 .modal-stat { background-color: #f8fafc; padding: 0.75rem; border-radius: 8px; }

@@ -56,7 +56,7 @@
               <th>Endereço</th>
               <th>Qtd.</th>
               <th>Valor</th>
-              <th>Motoqueiro</th>
+              <th>Prazo</th>
               <th>Status</th>
               <th>Ações</th>
             </tr>
@@ -154,6 +154,7 @@
     const API_URL = '/api';
     let selectedDate = new Date();
     let bairrosConfig = [];
+    let prazoUpdateInterval;
 
     const elements = {
         pedidosTbody: document.getElementById('pedidosTbody'),
@@ -203,7 +204,6 @@
         return `${year}-${month}-${day}`;
     };
 
-    // ALTERAÇÃO: Formato da data para "DD/MÊS"
     const formatDisplayDate = (date) => {
         const today = new Date();
         if (formatDateToYYYYMMDD(date) === formatDateToYYYYMMDD(today)) {
@@ -245,6 +245,30 @@
         }
     };
 
+    // NOVO: Função para calcular e formatar o prazo
+    const calcularPrazo = (horarioPedido, tempoPrevisto) => {
+        if (!horarioPedido || !tempoPrevisto) return '---';
+
+        const agora = new Date();
+        const horaPedidoDate = new Date(horarioPedido);
+        const horaPrevista = new Date(horaPedidoDate.getTime() + tempoPrevisto * 60000);
+
+        const diff = horaPrevista - agora;
+        const isAtrasado = diff < 0;
+        const diffAbs = Math.abs(diff);
+
+        const horas = Math.floor(diffAbs / (1000 * 60 * 60));
+        const minutos = Math.floor((diffAbs % (1000 * 60 * 60)) / (1000 * 60));
+
+        const hFormat = String(horas).padStart(2, '0');
+        const mFormat = String(minutos).padStart(2, '0');
+        
+        const classe = isAtrasado ? 'prazo-atrasado' : 'prazo-ok';
+        const sinal = isAtrasado ? '-' : '';
+
+        return `<span class="prazo ${classe}">${sinal}${hFormat}:${mFormat}</span>`;
+    };
+
     const renderPedidos = (pedidos) => {
         elements.pedidosTbody.innerHTML = '';
         if (pedidos.length === 0) {
@@ -253,6 +277,10 @@
         }
         pedidos.forEach(p => {
             const tr = document.createElement('tr');
+            tr.dataset.pedidoId = p.id; // Adiciona ID para atualização
+            tr.dataset.horarioPedido = p.horario_pedido;
+            tr.dataset.tempoPrevisto = p.tempo_previsto;
+
             const statusClass = p.status.toLowerCase().replace(' ', '-');
             tr.className = `status-row-${statusClass}`;
             
@@ -271,13 +299,15 @@
                 actionButtonsHTML = `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Reatribuir</button>`;
             }
 
+            const prazoHtml = (p.status === 'Em Rota' || p.status === 'Pendente') ? calcularPrazo(p.horario_pedido, p.tempo_previsto) : '---';
+
             tr.innerHTML = `
                 <td>${p.id}</td>
                 <td>${p.cliente_nome || 'N/A'}<br><small>${p.cliente_telefone || ''}</small></td>
                 <td>${p.cliente_endereco}<br><small>${p.cliente_bairro || ''}</small></td>
                 <td><div class="qty-display">${totalFrangos}</div></td>
                 <td>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</td>
-                <td>${p.motoqueiro_nome || '---'}</td>
+                <td class="prazo-cell">${prazoHtml}</td>
                 <td><span class="status status-${statusClass}">${p.status}</span></td>
                 <td>
                     <div class="action-buttons">
@@ -288,6 +318,23 @@
                 </td>`;
             elements.pedidosTbody.appendChild(tr);
         });
+        startPrazoUpdater();
+    };
+    
+    // NOVO: Função para iniciar/parar o atualizador de prazo
+    const startPrazoUpdater = () => {
+        if (prazoUpdateInterval) clearInterval(prazoUpdateInterval);
+        prazoUpdateInterval = setInterval(() => {
+            document.querySelectorAll('#pedidosTbody tr[data-pedido-id]').forEach(tr => {
+                const statusSpan = tr.querySelector('.status');
+                if (statusSpan && (statusSpan.textContent === 'Em Rota' || statusSpan.textContent === 'Pendente')) {
+                    const prazoCell = tr.querySelector('.prazo-cell');
+                    if (prazoCell) {
+                        prazoCell.innerHTML = calcularPrazo(tr.dataset.horarioPedido, tr.dataset.tempoPrevisto);
+                    }
+                }
+            });
+        }, 60000); // Atualiza a cada 1 minuto
     };
 
     const populateSelect = (selectId, options) => { const select = document.getElementById(selectId); select.innerHTML = options.map(opt => `<option value="${opt.value !== undefined ? opt.value : opt}">${opt.text !== undefined ? opt.text : opt}</option>`).join(''); };
