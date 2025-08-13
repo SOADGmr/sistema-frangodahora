@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Configurações - Frangolândia</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- NOVO: Script de autenticação -->
   <script src="auth.js"></script>
 </head>
 <body>
@@ -15,7 +14,6 @@
       <a href="pedidos.html">Painel de Pedidos</a>
       <a href="motoqueiros.html">Painel de Entregas</a>
       <a href="configuracoes.html" class="active">Configurações</a>
-      <!-- NOVO: Botão de Sair -->
       <a href="#" id="logout-btn" style="margin-left: auto; color: #e53e3e;">Sair</a>
     </nav>
   </header>
@@ -41,6 +39,29 @@
         </table>
       </div>
     </div>
+
+    <!-- NOVO: Seção de Gerenciamento de Usuários -->
+    <div class="pedidos-container" style="margin-top: 1.5rem;">
+        <div class="info-header" style="margin-bottom: 1.5rem;">
+            <h2>Gerenciamento de Usuários</h2>
+            <button id="add-user-btn" class="action-btn-header">Adicionar Usuário</button>
+        </div>
+        <div class="table-wrapper">
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuário</th>
+                        <th>Cargo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTbody">
+                    <!-- Linhas de usuários serão inseridas aqui -->
+                </tbody>
+            </table>
+        </div>
+    </div>
   </main>
 
   <!-- MODAL PARA ADICIONAR/EDITAR BAIRRO -->
@@ -63,12 +84,37 @@
     </section>
   </div>
 
-  <script>
-    // NOVO: Verifica a autenticação
-    const usuarioLogado = checkAuth(['Admin']);
+  <!-- NOVO: MODAL PARA ADICIONAR USUÁRIO -->
+  <div id="user-modal" class="modal-container hidden">
+    <section class="form-container" style="max-width: 500px;">
+        <button id="close-user-modal" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
+        <h2 id="user-modal-title">Adicionar Novo Usuário</h2>
+        <form id="user-form">
+            <div class="form-field">
+                <label for="user-usuario">Nome de Usuário</label>
+                <input type="text" id="user-usuario" required>
+            </div>
+            <div class="form-field">
+                <label for="user-senha">Senha</label>
+                <input type="password" id="user-senha" required placeholder="Mínimo 6 caracteres">
+            </div>
+            <div class="form-field">
+                <label for="user-cargo">Cargo</label>
+                <select id="user-cargo" required>
+                    <option value="Admin">Administrador</option>
+                    <option value="Moto">Motoqueiro</option>
+                </select>
+            </div>
+            <button type="submit">Salvar</button>
+        </form>
+    </section>
+  </div>
 
+
+  <script>
+    const usuarioLogado = checkAuth(['Admin']);
     const API_URL = '/api';
-    let allBairros = []; // Armazena todos os bairros carregados
+    let allBairros = [];
 
     const elements = {
         bairrosTbody: document.getElementById('bairrosTbody'),
@@ -80,7 +126,17 @@
         bairroIdInput: document.getElementById('bairro-id'),
         bairroNomeInput: document.getElementById('bairro-nome'),
         bairroTaxaInput: document.getElementById('bairro-taxa'),
-        logoutBtn: document.getElementById('logout-btn'), // NOVO
+        logoutBtn: document.getElementById('logout-btn'),
+        // NOVOS ELEMENTOS
+        usersTbody: document.getElementById('usersTbody'),
+        addUserBtn: document.getElementById('add-user-btn'),
+        userModal: document.getElementById('user-modal'),
+        closeUserModalBtn: document.getElementById('close-user-modal'),
+        userForm: document.getElementById('user-form'),
+        userModalTitle: document.getElementById('user-modal-title'),
+        userUsuarioInput: document.getElementById('user-usuario'),
+        userSenhaInput: document.getElementById('user-senha'),
+        userCargoSelect: document.getElementById('user-cargo'),
     };
 
     const fetchJSON = async (url, options = {}) => {
@@ -93,8 +149,9 @@
       return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' };
     };
 
+    // --- LÓGICA PARA BAIRROS (Existente) ---
     const renderBairros = (bairros) => {
-        allBairros = bairros; // Atualiza a lista global
+        allBairros = bairros;
         elements.bairrosTbody.innerHTML = '';
         if (bairros.length === 0) {
             elements.bairrosTbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">Nenhum bairro configurado.</td></tr>';
@@ -115,104 +172,58 @@
             elements.bairrosTbody.appendChild(tr);
         });
     };
+    const loadBairros = async () => { try { const bairros = await fetchJSON(`${API_URL}/configuracoes/taxas`); renderBairros(bairros); } catch (error) { console.error('Erro ao carregar bairros:', error); alert('Não foi possível carregar as taxas dos bairros.'); } };
+    const openEditModal = (id) => { const bairro = allBairros.find(b => b.id === id); if (bairro) { elements.bairroForm.reset(); elements.bairroIdInput.value = bairro.id; elements.bairroNomeInput.value = bairro.bairro; elements.bairroTaxaInput.value = bairro.taxa.toFixed(2); elements.bairroModalTitle.textContent = 'Editar Bairro'; elements.bairroModal.classList.remove('hidden'); } };
+    const handleBairroFormSubmit = async (e) => { e.preventDefault(); const id = elements.bairroIdInput.value; const bairroData = { bairro: elements.bairroNomeInput.value, taxa: parseFloat(elements.bairroTaxaInput.value) }; const method = id ? 'PUT' : 'POST'; const url = id ? `${API_URL}/configuracoes/taxas/${id}` : `${API_URL}/configuracoes/taxas`; try { await fetchJSON(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bairroData) }); elements.bairroModal.classList.add('hidden'); loadBairros(); } catch (error) { alert(`Erro ao salvar bairro: ${error.message}`); } };
+    const handleBairroDelete = async (id) => { if (confirm('Tem certeza que deseja excluir este bairro?')) { try { await fetchJSON(`${API_URL}/configuracoes/taxas/${id}`, { method: 'DELETE' }); loadBairros(); } catch (error) { alert(`Erro ao excluir bairro: ${error.message}`); } } };
 
-    const loadBairros = async () => {
-        try {
-            const bairros = await fetchJSON(`${API_URL}/configuracoes/taxas`);
-            renderBairros(bairros);
-        } catch (error) {
-            console.error('Erro ao carregar bairros:', error);
-            alert('Não foi possível carregar as taxas dos bairros.');
+    // --- LÓGICA PARA USUÁRIOS (NOVO) ---
+    const renderUsers = (users) => {
+        elements.usersTbody.innerHTML = '';
+        if (!users || users.length === 0) {
+            elements.usersTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">Nenhum usuário cadastrado.</td></tr>';
+            return;
         }
+        users.forEach(user => {
+            const tr = document.createElement('tr');
+            const deleteButton = user.id === 1 
+                ? `<button class="action-btn delete-user-btn" data-id="${user.id}" disabled title="Não é possível excluir o admin principal">Excluir</button>`
+                : `<button class="action-btn delete-user-btn" data-id="${user.id}">Excluir</button>`;
+            tr.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.usuario}</td>
+                <td>${user.cargo}</td>
+                <td><div class="action-buttons">${deleteButton}</div></td>
+            `;
+            elements.usersTbody.appendChild(tr);
+        });
     };
-
-    const openEditModal = (id) => {
-        const bairro = allBairros.find(b => b.id === id);
-        if (bairro) {
-            elements.bairroForm.reset();
-            elements.bairroIdInput.value = bairro.id;
-            elements.bairroNomeInput.value = bairro.bairro;
-            elements.bairroTaxaInput.value = bairro.taxa.toFixed(2);
-            elements.bairroModalTitle.textContent = 'Editar Bairro';
-            elements.bairroModal.classList.remove('hidden');
-        }
-    };
-
-    const handleFormSubmit = async (e) => {
-        e.preventDefault();
-        const id = elements.bairroIdInput.value;
-        const bairroData = {
-            bairro: elements.bairroNomeInput.value,
-            taxa: parseFloat(elements.bairroTaxaInput.value)
-        };
-
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `${API_URL}/configuracoes/taxas/${id}` : `${API_URL}/configuracoes/taxas`;
-
-        try {
-            await fetchJSON(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(bairroData)
-            });
-            elements.bairroModal.classList.add('hidden');
-            loadBairros();
-        } catch (error) {
-            alert(`Erro ao salvar bairro: ${error.message}`);
-        }
-    };
-
-    const handleDelete = async (id) => {
-        if (confirm('Tem certeza que deseja excluir este bairro?')) {
-            try {
-                await fetchJSON(`${API_URL}/configuracoes/taxas/${id}`, { method: 'DELETE' });
-                loadBairros();
-            } catch (error) {
-                alert(`Erro ao excluir bairro: ${error.message}`);
-            }
-        }
-    };
+    const loadUsers = async () => { try { const users = await fetchJSON(`${API_URL}/auth/users`); renderUsers(users); } catch (error) { console.error('Erro ao carregar usuários:', error); alert('Não foi possível carregar a lista de usuários.'); } };
+    const handleUserFormSubmit = async (e) => { e.preventDefault(); const userData = { usuario: elements.userUsuarioInput.value, senha: elements.userSenhaInput.value, cargo: elements.userCargoSelect.value }; if (userData.senha.length < 6) { alert('A senha deve ter no mínimo 6 caracteres.'); return; } try { await fetchJSON(`${API_URL}/auth/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData) }); elements.userModal.classList.add('hidden'); loadUsers(); } catch (error) { alert(`Erro ao salvar usuário: ${error.message}`); } };
+    const handleUserDelete = async (id) => { if (confirm(`Tem certeza que deseja excluir o usuário com ID ${id}?`)) { try { await fetchJSON(`${API_URL}/auth/users/${id}`, { method: 'DELETE' }); loadUsers(); } catch (error) { alert(`Erro ao excluir usuário: ${error.message}`); } } };
 
     function setupEventListeners() {
-        elements.addBairroBtn.addEventListener('click', () => {
-            elements.bairroForm.reset();
-            elements.bairroIdInput.value = '';
-            elements.bairroModalTitle.textContent = 'Adicionar Novo Bairro';
-            elements.bairroModal.classList.remove('hidden');
-        });
+        elements.logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
+        
+        // Listeners de Bairros
+        elements.addBairroBtn.addEventListener('click', () => { elements.bairroForm.reset(); elements.bairroIdInput.value = ''; elements.bairroModalTitle.textContent = 'Adicionar Novo Bairro'; elements.bairroModal.classList.remove('hidden'); });
+        elements.closeBairroModalBtn.addEventListener('click', () => { elements.bairroModal.classList.add('hidden'); });
+        elements.bairroModal.addEventListener('click', (e) => { if (e.target === elements.bairroModal) { elements.bairroModal.classList.add('hidden'); } });
+        elements.bairroForm.addEventListener('submit', handleBairroFormSubmit);
+        elements.bairrosTbody.addEventListener('click', (e) => { const target = e.target; if (target.classList.contains('delete-btn')) { handleBairroDelete(parseInt(target.dataset.id, 10)); } if (target.classList.contains('edit-btn')) { openEditModal(parseInt(target.dataset.id, 10)); } });
 
-        elements.closeBairroModalBtn.addEventListener('click', () => {
-            elements.bairroModal.classList.add('hidden');
-        });
-
-        elements.bairroModal.addEventListener('click', (e) => {
-            if (e.target === elements.bairroModal) {
-                elements.bairroModal.classList.add('hidden');
-            }
-        });
-
-        elements.bairroForm.addEventListener('submit', handleFormSubmit);
-
-        elements.bairrosTbody.addEventListener('click', (e) => {
-            const target = e.target;
-            if (target.classList.contains('delete-btn')) {
-                handleDelete(parseInt(target.dataset.id, 10));
-            }
-            if (target.classList.contains('edit-btn')) {
-                openEditModal(parseInt(target.dataset.id, 10));
-            }
-        });
-
-        // NOVO: Event listener para o botão de logout
-        elements.logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            logout();
-        });
+        // Listeners de Usuários
+        elements.addUserBtn.addEventListener('click', () => { elements.userForm.reset(); elements.userModalTitle.textContent = 'Adicionar Novo Usuário'; elements.userModal.classList.remove('hidden'); });
+        elements.closeUserModalBtn.addEventListener('click', () => { elements.userModal.classList.add('hidden'); });
+        elements.userModal.addEventListener('click', (e) => { if (e.target === elements.userModal) { elements.userModal.classList.add('hidden'); } });
+        elements.userForm.addEventListener('submit', handleUserFormSubmit);
+        elements.usersTbody.addEventListener('click', (e) => { const target = e.target; if (target.classList.contains('delete-user-btn') && !target.disabled) { handleUserDelete(parseInt(target.dataset.id, 10)); } });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners();
         loadBairros();
+        loadUsers();
     });
   </script>
 
