@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Painel de Entregas - Frangolândia</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- NOVO: Script de autenticação -->
+  <script src="auth.js"></script>
 </head>
 <body>
 
@@ -13,6 +15,8 @@
       <a href="pedidos.html">Painel de Pedidos</a>
       <a href="motoqueiros.html" class="active">Painel de Entregas</a>
       <a href="configuracoes.html">Configurações</a>
+      <!-- NOVO: Botão de Sair -->
+      <a href="#" id="logout-btn" style="margin-left: auto; color: #e53e3e;">Sair</a>
     </nav>
     <div class="info-header">
         <div class="date-navigator">
@@ -86,6 +90,9 @@
   </div>
 
   <script>
+    // NOVO: Verifica a autenticação
+    const usuarioLogado = checkAuth(['Admin']);
+  
     const API_URL = '/api';
     let selectedDate = new Date();
     let allPedidos = [];
@@ -117,6 +124,7 @@
         adjustChickenForm: document.getElementById('adjust-chicken-form'),
         adjustModalTitle: document.getElementById('adjust-modal-title'),
         adjustChickenAmountInput: document.getElementById('adjust-chicken-amount'),
+        logoutBtn: document.getElementById('logout-btn'), // NOVO
     };
 
     const formatDateToYYYYMMDD = (date) => {
@@ -270,7 +278,18 @@
                 li.dataset.horarioPedido = p.horario_pedido;
                 li.dataset.tempoPrevisto = p.tempo_previsto;
                 const prazoHtml = calcularPrazo(p.horario_pedido, p.tempo_previsto);
-                li.innerHTML = `<div class="pedido-info-detailed"><div class="detailed-info-header"><span>#${p.id} - ${p.cliente_nome || 'N/A'}</span><strong class="prazo-cell">${prazoHtml}</strong></div><small class="detailed-info-address">${p.cliente_endereco}, ${p.cliente_bairro || ''}</small><div class="detailed-info-footer"><small>📞 ${p.cliente_telefone || 'N/A'}</small><small>💳 ${p.forma_pagamento}</small></div></div><button class="entregar-btn" data-id="${p.id}">Entregue</button>`;
+                
+                // ATUALIZADO: Nova estrutura HTML para o grid
+                li.innerHTML = `
+                    <div class="grid-container">
+                        <span class="grid-cliente">#${p.id} - ${p.cliente_nome || 'N/A'}</span>
+                        <strong class="grid-prazo prazo-cell">${prazoHtml}</strong>
+                        <small class="grid-endereco">${p.cliente_endereco}, ${p.cliente_bairro || ''}</small>
+                        <small class="grid-pagamento">${p.forma_pagamento}</small>
+                        <small class="grid-telefone">📞 ${p.cliente_telefone || 'N/A'}</small>
+                        <button class="entregar-btn grid-entregar-btn" data-id="${p.id}">Entregue</button>
+                    </div>
+                `;
                 elements.detailsPedidosList.appendChild(li);
             });
         }
@@ -559,6 +578,12 @@
         elements.detailsModalFooter.addEventListener('click', (e) => {
             if (e.target.classList.contains('delete-motoqueiro-btn')) handleDeleteMotoqueiro(e.target.dataset.id);
             if (e.target.classList.contains('save-route-btn')) handleSaveRoute();
+        });
+
+        // NOVO: Event listener para o botão de logout
+        elements.logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
         });
     }
 

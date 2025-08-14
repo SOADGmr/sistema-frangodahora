@@ -990,3 +990,34 @@ body.cliente-page {
   font-size: 1.1rem;
   color: #555;
 }
+
+/* --- NOVO: Estilos para o Grid do Modal de Entregas --- */
+.pedido-item.route-draggable {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0 1rem;
+    align-items: center;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto;
+    gap: 0.25rem 1rem;
+    grid-template-areas:
+        "cliente prazo"
+        "endereco pagamento"
+        "telefone entregar";
+}
+
+.grid-cliente { grid-area: cliente; font-weight: 600; font-size: 1.1rem; }
+.grid-prazo { grid-area: prazo; text-align: right; }
+.grid-endereco { grid-area: endereco; color: #718096; }
+.grid-pagamento { grid-area: pagamento; text-align: right; color: #718096; }
+.grid-telefone { grid-area: telefone; color: #718096; }
+.grid-entregar-btn { grid-area: entregar; justify-self: end; }
+
+/* Remove o container antigo que não é mais necessário */
+.pedido-item.route-draggable .pedido-info-detailed {
+    display: none;
+}
