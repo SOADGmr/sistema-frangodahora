@@ -3,7 +3,7 @@
 /**
  * Verifica a autenticação e autorização do usuário.
  * Esta função deve ser chamada no início de cada página protegida.
- * * @param {string[]} allowedRoles - Um array com os cargos que podem acessar a página. Ex: ['Admin'], ['Moto'], ['Admin', 'Moto']
+ * @param {string[]} allowedRoles - Um array com os cargos que podem acessar a página. Ex: ['Admin'], ['Moto'], ['Admin', 'Moto']
  */
 function checkAuth(allowedRoles) {
     const usuarioLogadoJSON = sessionStorage.getItem('usuarioLogado');
@@ -12,18 +12,26 @@ function checkAuth(allowedRoles) {
     if (!usuarioLogadoJSON) {
         // Se não houver, redireciona para o login, guardando a página que ele tentou acessar.
         window.location.href = `login.html?redirect=${window.location.pathname}`;
-        return;
+        return; // Para a execução do script para evitar que o resto da página carregue
     }
 
     const usuario = JSON.parse(usuarioLogadoJSON);
 
     // 2. Verifica se o cargo do usuário está na lista de cargos permitidos
     if (!allowedRoles.includes(usuario.cargo)) {
-        // Se não tiver permissão, informa o erro e redireciona para o login.
-        alert('Você não tem permissão para acessar esta página.');
-        sessionStorage.removeItem('usuarioLogado'); // Limpa a sessão inválida
-        window.location.href = 'login.html';
-        return;
+        // Se não tiver permissão, informa o erro e redireciona para a página PADRÃO do seu cargo.
+        alert('Você não tem permissão para acessar esta página. Redirecionando para sua página inicial.');
+        
+        // Redireciona para a página correta, evitando o loop de login.
+        if (usuario.cargo === 'Admin') {
+            window.location.href = 'pedidos.html';
+        } else if (usuario.cargo === 'Moto') {
+            window.location.href = 'entregas.html';
+        } else {
+            // Se o cargo for desconhecido, faz logout por segurança.
+            logout();
+        }
+        return; // Para a execução do script
     }
 
     // 3. Se tudo estiver correto, retorna os dados do usuário para uso na página.

@@ -2,67 +2,149 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Minhas Entregas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Entregas - Frangolândia</title>
   <link rel="stylesheet" href="style.css" />
   <!-- NOVO: Script de autenticação -->
   <script src="auth.js"></script>
 </head>
 <body>
 
-  <!-- A TELA DE LOGIN FOI REMOVIDA DAQUI -->
-
-  <div id="app-container" class="container">
-    <!-- TELA DE ENTREGAS (agora sempre visível se autenticado) -->
-    <div id="deliveries-view">
-      <div class="deliveries-header">
-        <h2 id="welcome-message"></h2>
-        <div class="header-actions">
-            <button id="pix-btn" class="pix-btn">PIX</button>
-            <button id="logout-btn" class="logout-btn">Sair</button>
+  <header>
+    <nav>
+      <a href="pedidos.html">Painel de Pedidos</a>
+      <a href="motoqueiros.html" class="active">Painel de Entregas</a>
+      <a href="configuracoes.html">Configurações</a>
+      <!-- NOVO: Botão de Sair -->
+      <a href="#" id="logout-btn" style="margin-left: auto; color: #e53e3e;">Sair</a>
+    </nav>
+    <div class="info-header">
+        <div class="date-navigator">
+            <button id="prev-day-btn" class="date-nav-btn">&lt;</button>
+            <span id="current-date-display"></span>
+            <button id="next-day-btn" class="date-nav-btn">&gt;</button>
         </div>
-      </div>
-      <div id="deliveries-list"></div>
+        <div class="header-actions">
+            <button id="open-start-day-modal-btn" class="action-btn-header">Iniciar Dia de Motoqueiro</button>
+        </div>
     </div>
+  </header>
+
+  <main class="page-container">
+    <div id="motoqueiros-list" class="motoqueiros-panel">
+        <!-- Os cards dos motoqueiros serão inseridos aqui pelo JavaScript -->
+    </div>
+
+    <div class="orders-panel">
+        <div class="pedidos-container">
+            <h2>Pedidos do Dia</h2>
+            <div class="form-field"><input type="text" id="search-pedidos" placeholder="Pesquisar por cliente ou bairro..."></div>
+            <ul id="all-orders-list" class="pedidos-list"></ul>
+        </div>
+    </div>
+  </main>
+
+  <!-- MODAL PARA INICIAR O DIA DO MOTOQUEIRO -->
+  <div id="start-day-modal" class="modal-container hidden">
+    <section class="form-container" style="max-width: 500px;">
+        <button id="close-start-day-modal" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
+        <h2>Iniciar Dia do Motoqueiro</h2>
+        <form id="start-day-form">
+            <div class="form-field">
+                <label for="motoqueiro-nome-start">Nome do Motoqueiro</label>
+                <input type="text" id="motoqueiro-nome-start" list="motoqueiros-datalist" placeholder="Digite ou selecione um nome" required>
+                <datalist id="motoqueiros-datalist"></datalist>
+            </div>
+            <div class="form-field">
+                <label for="frangos-na-bag-start">Frangos Iniciais na Bag</label>
+                <input type="number" id="frangos-na-bag-start" min="0" step="0.5" required>
+            </div>
+            <button type="submit">Confirmar Início</button>
+        </form>
+    </section>
   </div>
 
-  <!-- MODAL DO PIX -->
-  <div id="pix-modal" class="modal-container hidden">
-      <div class="modal-content">
-          <h2>QR Code PIX</h2>
-          <!-- Substitua pela imagem real do seu QR Code -->
-          <img src="./imagens/qr_code_pix.jpg" alt="QR Code Pix" style="max-width: 100%; border-radius: 8px;">
-          <button id="close-pix-modal" class="btn" style="margin-top: 1rem;">Fechar</button>
-      </div>
+  <!-- MODAL PARA AJUSTAR FRANGOS NA BAG -->
+  <div id="adjust-chicken-modal" class="modal-container hidden">
+    <section class="form-container" style="max-width: 500px;">
+        <button id="close-adjust-chicken-modal" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
+        <h2 id="adjust-modal-title">Ajustar Frangos</h2>
+        <form id="adjust-chicken-form">
+            <div class="form-field">
+                <label for="adjust-chicken-amount">Quantidade</label>
+                <input type="number" id="adjust-chicken-amount" min="0" step="0.5" required>
+            </div>
+            <button type="submit">Confirmar</button>
+        </form>
+    </section>
+  </div>
+
+  <!-- MODAL DE DETALHES DO MOTOQUEIRO -->
+  <div id="details-modal" class="modal-container hidden">
+    <section class="form-container">
+        <button id="close-details-modal" class="close-btn">&times;</button>
+        <div id="details-modal-header"></div>
+        <ul id="details-pedidos-list" class="pedidos-list"></ul>
+        <div id="details-modal-footer"></div>
+    </section>
   </div>
 
   <script>
-    // NOVO: Verifica se o usuário é do tipo 'Moto'
-    const usuarioLogado = checkAuth(['Moto']);
-
+    // NOVO: Verifica a autenticação
+    const usuarioLogado = checkAuth(['Admin']);
+  
     const API_URL = '/api';
-    let prazoUpdateInterval;
+    let selectedDate = new Date();
+    let allPedidos = [];
+    let activeMotoqueiros = []; 
+    let masterMotoqueiros = []; 
+    let modalPrazoInterval;
 
     const elements = {
-      // loginView e outros elementos de login foram removidos
-      deliveriesView: document.getElementById('deliveries-view'),
-      welcomeMessage: document.getElementById('welcome-message'),
-      logoutBtn: document.getElementById('logout-btn'),
-      deliveriesList: document.getElementById('deliveries-list'),
-      pixBtn: document.getElementById('pix-btn'),
-      pixModal: document.getElementById('pix-modal'),
-      closePixModalBtn: document.getElementById('close-pix-modal'),
+        motoqueirosList: document.getElementById('motoqueiros-list'),
+        allOrdersList: document.getElementById('all-orders-list'),
+        startDayForm: document.getElementById('start-day-form'),
+        motoqueiroNomeStart: document.getElementById('motoqueiro-nome-start'),
+        motoqueirosDatalist: document.getElementById('motoqueiros-datalist'),
+        frangosNaBagStartInput: document.getElementById('frangos-na-bag-start'),
+        searchPedidosInput: document.getElementById('search-pedidos'),
+        detailsModal: document.getElementById('details-modal'),
+        closeDetailsModalBtn: document.getElementById('close-details-modal'),
+        detailsModalHeader: document.getElementById('details-modal-header'),
+        detailsPedidosList: document.getElementById('details-pedidos-list'),
+        detailsModalFooter: document.getElementById('details-modal-footer'),
+        currentDateDisplay: document.getElementById('current-date-display'),
+        prevDayBtn: document.getElementById('prev-day-btn'),
+        nextDayBtn: document.getElementById('next-day-btn'),
+        openStartDayModalBtn: document.getElementById('open-start-day-modal-btn'),
+        startDayModal: document.getElementById('start-day-modal'),
+        closeStartDayModalBtn: document.getElementById('close-start-day-modal'),
+        adjustChickenModal: document.getElementById('adjust-chicken-modal'),
+        closeAdjustChickenModalBtn: document.getElementById('close-adjust-chicken-modal'),
+        adjustChickenForm: document.getElementById('adjust-chicken-form'),
+        adjustModalTitle: document.getElementById('adjust-modal-title'),
+        adjustChickenAmountInput: document.getElementById('adjust-chicken-amount'),
+        logoutBtn: document.getElementById('logout-btn'), // NOVO
     };
 
-    const fetchJSON = async (url, options = {}) => {
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' }));
-        throw new Error(errorData.error);
-      }
-      return response.json();
+    const formatDateToYYYYMMDD = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const formatDisplayDate = (date) => {
+        const today = new Date();
+        if (formatDateToYYYYMMDD(date) === formatDateToYYYYMMDD(today)) {
+            return "Hoje";
+        }
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
+        return `${day}/${month}`;
     };
     
+    // NOVO: Função para calcular e formatar o prazo
     const calcularPrazo = (horarioPedido, tempoPrevisto) => {
         if (!horarioPedido || !tempoPrevisto) return '---';
 
@@ -86,148 +168,432 @@
         return `<span class="prazo ${classe}">${sinal}${hFormat}:${mFormat}</span>`;
     };
 
-    const createDeliveryCard = (pedido, isDelivered) => {
-        const card = document.createElement('div');
-        card.className = 'delivery-card';
-        if (isDelivered) {
-            card.classList.add('card-entregue');
-        }
-        
-        card.dataset.horarioPedido = pedido.horario_pedido;
-        card.dataset.tempoPrevisto = pedido.tempo_previsto;
-        card.dataset.pedidoId = pedido.id;
+    const updateDateDisplay = () => { elements.currentDateDisplay.textContent = formatDisplayDate(selectedDate); };
+    const fetchJSON = async (url, options = {}) => { const response = await fetch(url, options); if (!response.ok) { const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' })); throw new Error(errorData.error); } const text = await response.text(); return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; };
 
-        const picadoClass = pedido.picado ? 'sim' : 'nao';
-        const fullAddress = `${pedido.cliente_endereco}, ${pedido.cliente_bairro}`;
-        const encodedAddress = encodeURIComponent(fullAddress);
-        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
-        const totalFrangos = pedido.quantidade_frangos + (pedido.meio_frango ? 0.5 : 0);
-
-        const buttonHtml = isDelivered 
-            ? `<button class="btn btn-entregue" disabled>Entregue</button>`
-            : `<button class="btn btn-entregue" data-pedido-id="${pedido.id}">Marcar como Entregue</button>`;
+    const renderMotoqueiros = () => {
+        elements.motoqueirosList.innerHTML = '';
+        activeMotoqueiros.forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'motoqueiro-card';
+            card.dataset.motoqueiroId = m.id;
+            const frangosEntregues = m.pedidos_entregues.reduce((sum, p) => sum + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+            const frangosAtribuidos = m.pedidos_em_rota.reduce((sum, p) => sum + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+            const frangosDisponiveis = m.frangos_na_bag - frangosAtribuidos - frangosEntregues;
+            let squaresHtml = '';
+            for(let i = 0; i < Math.floor(frangosEntregues); i++) { squaresHtml += `<div class="chicken-square square-delivered"></div>`; }
+            for(let i = 0; i < Math.floor(frangosAtribuidos); i++) { squaresHtml += `<div class="chicken-square square-assigned"></div>`; }
+            for(let i = 0; i < Math.floor(frangosDisponiveis); i++) { squaresHtml += `<div class="chicken-square square-available"></div>`; }
             
-        const prazoHtml = isDelivered ? '' : calcularPrazo(pedido.horario_pedido, pedido.tempo_previsto);
-
-        card.innerHTML = `
-          <div class="card-header">
-            <h3>
-              <span class="picado-tag ${picadoClass}" title="${pedido.picado ? 'Frango Picado' : 'Frango Inteiro'}"></span>
-              #${pedido.id} - ${pedido.cliente_nome}
-            </h3>
-            <div style="text-align: right;">
-                <strong>R$ ${pedido.preco_total.toFixed(2)}</strong>
-                <div class="prazo-cell">${prazoHtml}</div>
-            </div>
-          </div>
-          <div class="card-body">
-            <p><strong>Endereço:</strong> ${pedido.cliente_endereco}, ${pedido.cliente_bairro}</p>
-            ${pedido.cliente_referencia ? `<p><strong>Referência:</strong> ${pedido.cliente_referencia}</p>` : ''}
-            <p><strong>Telefone:</strong> ${pedido.cliente_telefone}</p>
-            ${pedido.observacao ? `<p><strong>Obs:</strong> ${pedido.observacao}</p>` : ''}
-            <div class="card-body-footer">
-                <p><strong>Pagamento:</strong> ${pedido.forma_pagamento}</p>
-                <div class="card-delivery-controls">
-                    <a href="${mapsUrl}" target="_blank" class="map-btn" title="Ver no mapa">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                    </a>
-                    <div class="qty-display">${totalFrangos}</div>
+            card.innerHTML = `
+                <div class="motoqueiro-card-content">
+                    <div class="motoqueiro-info-wrapper">
+                        <h3 class="motoqueiro-name">${m.nome}</h3>
+                        <span class="bag-info">Bag: ${frangosDisponiveis} / ${m.frangos_na_bag} frangos</span>
+                    </div>
+                    <div class="adjust-buttons">
+                        <button class="adjust-btn add" data-motoqueiro-nome="${m.nome}" data-action="add">+</button>
+                        <button class="adjust-btn remove" data-motoqueiro-nome="${m.nome}" data-action="remove">-</button>
+                    </div>
+                    <div class="chicken-squares">${squaresHtml}</div>
                 </div>
-            </div>
-          </div>
-          <div class="card-actions">
-            ${buttonHtml}
-          </div>
-        `;
-        return card;
+            `;
+            elements.motoqueirosList.appendChild(card);
+        });
     };
 
-    const renderDeliveries = (motoqueiro) => {
-      elements.deliveriesList.innerHTML = '';
-      const hasPendingDeliveries = motoqueiro.pedidos_em_rota && motoqueiro.pedidos_em_rota.length > 0;
-      const hasFinishedDeliveries = motoqueiro.pedidos_entregues && motoqueiro.pedidos_entregues.length > 0;
-
-      if (!hasPendingDeliveries && !hasFinishedDeliveries) {
-        elements.deliveriesList.innerHTML = '<p class="no-deliveries">Nenhuma entrega no momento. Bom descanso!</p>';
-        return;
-      }
-
-      if (hasPendingDeliveries) {
-        motoqueiro.pedidos_em_rota.forEach(pedido => {
-            const card = createDeliveryCard(pedido, false);
-            elements.deliveriesList.appendChild(card);
+    const renderAllPedidos = (searchTerm = '') => {
+        elements.allOrdersList.innerHTML = '';
+        let deliveryOrders = allPedidos.filter(p => p.cliente_endereco !== 'Retirada');
+        if (searchTerm) {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            deliveryOrders = deliveryOrders.filter(p => 
+                (p.cliente_nome && p.cliente_nome.toLowerCase().includes(lowerCaseSearchTerm)) || 
+                (p.cliente_bairro && p.cliente_bairro.toLowerCase().includes(lowerCaseSearchTerm))
+            );
+        }
+        if (deliveryOrders.length === 0) {
+            elements.allOrdersList.innerHTML = '<div class="no-pedidos">Nenhum pedido de entrega encontrado.</div>';
+            return;
+        }
+        deliveryOrders.forEach(p => {
+            const li = document.createElement('li');
+            const isDraggable = p.status === 'Pendente';
+            li.className = `pedido-item ${isDraggable ? 'draggable' : ''}`;
+            li.draggable = isDraggable;
+            li.dataset.pedidoId = p.id;
+            const totalFrangos = p.quantidade_frangos + (p.meio_frango ? 0.5 : 0);
+            li.dataset.pedidoQtd = totalFrangos;
+            const statusClass = p.status.toLowerCase().replace(' ', '-');
+            li.innerHTML = `<div class="pedido-info"><span>#${p.id} - ${p.cliente_nome || 'N/A'}</span><small>${p.cliente_endereco}, ${p.cliente_bairro || ''}</small></div><div style="display: flex; align-items: center; gap: 0.75rem;"><span class="pedido-qtd">🐔 ${totalFrangos}</span><span class="status status-${statusClass}">${p.status}</span></div>`;
+            elements.allOrdersList.appendChild(li);
         });
-      }
-
-      if (hasFinishedDeliveries) {
-        const finishedTitle = document.createElement('h3');
-        finishedTitle.className = 'deliveries-section-title';
-        finishedTitle.textContent = 'Entregas Finalizadas';
-        elements.deliveriesList.appendChild(finishedTitle);
-
-        motoqueiro.pedidos_entregues.forEach(pedido => {
-            const card = createDeliveryCard(pedido, true);
-            elements.deliveriesList.appendChild(card);
-        });
-      }
-      startPrazoUpdater();
     };
-
-    const startPrazoUpdater = () => {
-        if (prazoUpdateInterval) clearInterval(prazoUpdateInterval);
-        prazoUpdateInterval = setInterval(() => {
-            document.querySelectorAll('#deliveries-list .delivery-card[data-pedido-id]').forEach(card => {
-                if (!card.classList.contains('card-entregue')) {
-                    const prazoCell = card.querySelector('.prazo-cell');
-                    if (prazoCell) {
-                        prazoCell.innerHTML = calcularPrazo(card.dataset.horarioPedido, card.dataset.tempoPrevisto);
-                    }
+    
+    const openDetailsModal = (motoqueiroId) => {
+        if (modalPrazoInterval) clearInterval(modalPrazoInterval);
+        const motoqueiro = activeMotoqueiros.find(m => m.id == motoqueiroId);
+        if (!motoqueiro) return;
+        const todosPedidosDoDia = [...motoqueiro.pedidos_em_rota, ...motoqueiro.pedidos_entregues];
+        const totalVendas = todosPedidosDoDia.reduce((sum, p) => sum + p.preco_total, 0);
+        const totalDinheiro = todosPedidosDoDia.filter(p => p.forma_pagamento === 'Dinheiro').reduce((sum, p) => sum + p.preco_total, 0);
+        const frangosEntregues = motoqueiro.pedidos_entregues.reduce((sum, p) => sum + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+        const frangosAtribuidos = motoqueiro.pedidos_em_rota.reduce((sum, p) => sum + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+        const frangosDisponiveis = motoqueiro.frangos_na_bag - frangosAtribuidos - frangosEntregues;
+        let squaresHtml = '';
+        for(let i = 0; i < Math.floor(frangosEntregues); i++) { squaresHtml += `<div class="chicken-square square-delivered"></div>`; }
+        for(let i = 0; i < Math.floor(frangosAtribuidos); i++) { squaresHtml += `<div class="chicken-square square-assigned"></div>`; }
+        for(let i = 0; i < Math.floor(frangosDisponiveis); i++) { squaresHtml += `<div class="chicken-square square-available"></div>`; }
+        elements.detailsModalHeader.innerHTML = `
+            <div class="modal-header-details">
+                <div class="modal-title-bar">
+                    <h2 style="text-align: left; margin-bottom: 0;">${motoqueiro.nome}</h2>
+                </div>
+                <div class="modal-stats-grid">
+                    <div class="modal-stat">
+                        <div class="modal-stat-title">BAG</div>
+                        <div class="modal-chicken-squares chicken-squares">${squaresHtml}</div>
+                    </div>
+                    <div class="modal-stat">
+                        <div class="modal-stat-title">VENDAS TOTAIS</div>
+                        <div class="modal-stat-value">R$ ${totalVendas.toFixed(2)}</div>
+                    </div>
+                    <div class="modal-stat">
+                        <div class="modal-stat-title">TOTAL EM DINHEIRO</div>
+                        <div class="modal-stat-value">R$ ${totalDinheiro.toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>`;
+        elements.detailsPedidosList.innerHTML = '';
+        if (motoqueiro.pedidos_em_rota.length > 0) {
+            const rotaHeader = document.createElement('h3');
+            rotaHeader.className = 'modal-section-header';
+            rotaHeader.textContent = 'Em Rota (Arraste para ordenar)';
+            elements.detailsPedidosList.appendChild(rotaHeader);
+            motoqueiro.pedidos_em_rota.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'pedido-item route-draggable';
+                li.draggable = true;
+                li.dataset.pedidoId = p.id;
+                li.dataset.horarioPedido = p.horario_pedido;
+                li.dataset.tempoPrevisto = p.tempo_previsto;
+                const prazoHtml = calcularPrazo(p.horario_pedido, p.tempo_previsto);
+                
+                // ATUALIZADO: Nova estrutura HTML para o grid
+                li.innerHTML = `
+                    <span class="grid-cliente">#${p.id} - ${p.cliente_nome || 'N/A'}</span>
+                    <strong class="grid-prazo prazo-cell">${prazoHtml}</strong>
+                    <small class="grid-endereco">${p.cliente_endereco}, ${p.cliente_bairro || ''}</small>
+                    <button class="entregar-btn grid-botao" data-id="${p.id}">Entregue</button>
+                    <small class="grid-telefone">📞 ${p.cliente_telefone || 'N/A'}</small>
+                    <small class="grid-pagamento">${p.forma_pagamento}</small>
+                `;
+                elements.detailsPedidosList.appendChild(li);
+            });
+        }
+        if (motoqueiro.pedidos_entregues.length > 0) {
+            const entreguesHeader = document.createElement('h3');
+            entreguesHeader.className = 'modal-section-header';
+            entreguesHeader.textContent = 'Entregues Hoje';
+            elements.detailsPedidosList.appendChild(entreguesHeader);
+            motoqueiro.pedidos_entregues.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'pedido-item pedido-entregue-modal';
+                li.innerHTML = `<div class="pedido-info-detailed"><div class="detailed-info-header"><span>#${p.id} - ${p.cliente_nome || 'N/A'}</span><strong>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</strong></div><small class="detailed-info-address">${p.cliente_endereco}, ${p.cliente_bairro || ''}</small><div class="detailed-info-footer"><small>📞 ${p.cliente_telefone || 'N/A'}</small><small>💳 ${p.forma_pagamento}</small></div></div><span class="status status-entregue">Entregue</span>`;
+                elements.detailsPedidosList.appendChild(li);
+            });
+        }
+        if (todosPedidosDoDia.length === 0) {
+            elements.detailsPedidosList.innerHTML = '<div class="no-pedidos">Nenhum pedido atribuído hoje.</div>';
+        }
+        elements.detailsModalFooter.innerHTML = `
+            <div class="modal-footer-actions">
+                <button class="delete-motoqueiro-btn" data-id="${motoqueiro.id}">Excluir Motoqueiro</button>
+                <button class="save-route-btn" data-id="${motoqueiro.id}">Salvar Rota</button>
+            </div>`;
+        elements.detailsModal.classList.remove('hidden');
+        
+        // Inicia o atualizador de prazo para o modal
+        modalPrazoInterval = setInterval(() => {
+            document.querySelectorAll('#details-pedidos-list .route-draggable').forEach(li => {
+                const prazoCell = li.querySelector('.prazo-cell');
+                if (prazoCell) {
+                    prazoCell.innerHTML = calcularPrazo(li.dataset.horarioPedido, li.dataset.tempoPrevisto);
                 }
             });
         }, 60000);
     };
+
+    const handleStartDay = async (e) => {
+        e.preventDefault();
+        const motoqueiroNome = elements.motoqueiroNomeStart.value.trim();
+        const frangosNaBag = parseFloat(elements.frangosNaBagStartInput.value);
+        if (!motoqueiroNome || isNaN(frangosNaBag)) {
+            alert('Preencha o nome e a quantidade de frangos.');
+            return;
+        }
+        try {
+            await fetchJSON(`${API_URL}/motoqueiros/operacao`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    motoqueiro_nome: motoqueiroNome, 
+                    data: formatDateToYYYYMMDD(selectedDate),
+                    frangos_na_bag: frangosNaBag 
+                })
+            });
+            elements.startDayForm.reset();
+            elements.startDayModal.classList.add('hidden');
+            await refreshAllData();
+        } catch (error) {
+            alert(`Erro: ${error.message}`);
+        }
+    };
+
+    const handleAddOrRemoveChickens = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const motoqueiroNome = form.dataset.motoqueiroNome;
+        const action = form.dataset.action;
+        let amount = parseFloat(elements.adjustChickenAmountInput.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            alert('Por favor, insira uma quantidade válida.');
+            return;
+        }
+
+        if (action === 'remove') {
+            amount = -amount;
+        }
+
+        try {
+            await fetchJSON(`${API_URL}/motoqueiros/operacao`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    motoqueiro_nome: motoqueiroNome, 
+                    data: formatDateToYYYYMMDD(selectedDate),
+                    frangos_na_bag: amount 
+                })
+            });
+            elements.adjustChickenModal.classList.add('hidden');
+            await refreshAllData();
+        } catch (error) {
+            alert(`Erro ao ajustar frangos: ${error.message}`);
+        }
+    };
     
-    const handleMarkAsDelivered = async (e) => {
-      if (!e.target.classList.contains('btn-entregue') || e.target.disabled) return;
-      const pedidoId = e.target.dataset.pedidoId;
-      if (confirm(`Confirmar a entrega do pedido #${pedidoId}?`)) {
+    const handleMarkAsDelivered = async (pedidoId) => { 
+        if (confirm(`Confirmar a entrega do pedido #${pedidoId}?`)) { 
+            try { 
+                await fetchJSON(`${API_URL}/pedidos/${pedidoId}/entregar`, { method: 'PUT' }); 
+                await refreshAllData();
+                elements.detailsModal.classList.add('hidden'); 
+            } catch (error) { 
+                alert(`Erro ao finalizar entrega: ${error.message}`); 
+            } 
+        } 
+    };
+
+    const handleDeleteMotoqueiro = async (motoqueiroId) => { 
+        if (confirm(`Tem certeza que deseja excluir este motoqueiro? Esta ação não pode ser desfeita.`)) { 
+            try { 
+                await fetchJSON(`${API_URL}/motoqueiros/${motoqueiroId}`, { method: 'DELETE' }); 
+                await refreshAllData();
+                elements.detailsModal.classList.add('hidden'); 
+            } catch (error) { 
+                alert(`Erro ao excluir motoqueiro: ${error.message}`); 
+            } 
+        } 
+    };
+
+    const handleSaveRoute = async () => {
+        const orderedIds = [...elements.detailsPedidosList.querySelectorAll('.route-draggable')].map(item => item.dataset.pedidoId);
         try {
-          await fetchJSON(`${API_URL}/pedidos/${pedidoId}/entregar`, { method: 'PUT' });
-          loadMotoqueiroData(); // Recarrega os dados
+            await fetchJSON(`${API_URL}/pedidos/ordenar-rota`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ordem: orderedIds })
+            });
+            alert('Rota salva com sucesso!');
+            elements.detailsModal.classList.add('hidden');
+            await refreshAllData();
         } catch (error) {
-          alert(`Erro ao confirmar entrega: ${error.message}`);
+            alert('Erro ao salvar a nova ordem da rota.');
+            console.error(error);
         }
-      }
     };
 
-    const loadMotoqueiroData = async () => {
+    function setupDragAndDrop() {
+        elements.allOrdersList.addEventListener('dragstart', e => { if (e.target.classList.contains('draggable')) { e.dataTransfer.setData('text/plain', JSON.stringify({ id: e.target.dataset.pedidoId, qtd: e.target.dataset.pedidoQtd })); setTimeout(() => e.target.classList.add('dragging'), 0); } });
+        elements.allOrdersList.addEventListener('dragend', e => { if (e.target.classList.contains('draggable')) { e.target.classList.remove('dragging'); } });
+        elements.motoqueirosList.addEventListener('dragover', e => { e.preventDefault(); const targetCard = e.target.closest('.motoqueiro-card'); if (targetCard) { targetCard.classList.add('drag-over'); } });
+        elements.motoqueirosList.addEventListener('dragleave', e => { const targetCard = e.target.closest('.motoqueiro-card'); if (targetCard) { targetCard.classList.remove('drag-over'); } });
+        elements.motoqueirosList.addEventListener('drop', async e => {
+            e.preventDefault();
+            const targetCard = e.target.closest('.motoqueiro-card');
+            if (!targetCard) return;
+            targetCard.classList.remove('drag-over');
+            const motoqueiroId = targetCard.dataset.motoqueiroId;
+            const pedidoData = JSON.parse(e.dataTransfer.getData('text/plain'));
+            const pedidoId = pedidoData.id;
+            const pedidoQtd = parseFloat(pedidoData.qtd);
+            const motoqueiro = activeMotoqueiros.find(m => m.id == motoqueiroId);
+            if (!motoqueiro) return;
+            const frangosAtribuidos = motoqueiro.pedidos_em_rota.reduce((sum, p) => sum + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+            const frangosEntregues = motoqueiro.pedidos_entregues.reduce((sum, p) => sum + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
+            const espacoLivre = motoqueiro.frangos_na_bag - frangosAtribuidos - frangosEntregues;
+            if (espacoLivre >= pedidoQtd) {
+                try {
+                    await fetchJSON(`${API_URL}/pedidos/${pedidoId}/atribuir`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motoqueiroId: motoqueiro.id }) });
+                    await refreshAllData();
+                } catch (error) { alert(`Erro ao atribuir pedido: ${error.message}`); }
+            } else {
+                alert(`Bag insuficiente! ${motoqueiro.nome} só tem ${espacoLivre} frangos livres.`);
+            }
+        });
+    }
+
+    function setupRouteReordering() {
+        let draggedItem = null;
+        elements.detailsPedidosList.addEventListener('dragstart', e => { if (e.target.classList.contains('route-draggable')) { draggedItem = e.target; setTimeout(() => e.target.classList.add('dragging-route'), 0); } });
+        elements.detailsPedidosList.addEventListener('dragend', e => { if (draggedItem) { draggedItem.classList.remove('dragging-route'); draggedItem = null; } });
+        elements.detailsPedidosList.addEventListener('dragover', e => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(elements.detailsPedidosList, e.clientY);
+            const list = e.target.closest('.pedidos-list');
+            if(draggedItem) {
+                if (afterElement == null) { list.appendChild(draggedItem); } 
+                else { list.insertBefore(draggedItem, afterElement); }
+            }
+        });
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.route-draggable:not(.dragging-route)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } 
+                else { return closest; }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+    }
+
+    const fetchDataForDate = async (date) => {
+        const dateString = formatDateToYYYYMMDD(date);
+        updateDateDisplay();
         try {
-            // Usa o nome de usuário do objeto 'usuarioLogado'
-            const motoqueiro = await fetchJSON(`${API_URL}/motoqueiros/nome/${encodeURIComponent(usuarioLogado.usuario)}`);
-            elements.welcomeMessage.textContent = `Olá, ${motoqueiro.nome.split(' ')[0]}!`;
-            renderDeliveries(motoqueiro);
+            const [motoqueiros, pedidos] = await Promise.all([
+                fetchJSON(`${API_URL}/motoqueiros/detalhes?data=${dateString}`),
+                fetchJSON(`${API_URL}/pedidos?data=${dateString}`)
+            ]);
+            activeMotoqueiros = motoqueiros || [];
+            allPedidos = pedidos || [];
+            renderMotoqueiros();
+            renderAllPedidos();
         } catch (error) {
-            alert(`Erro ao carregar seus dados: ${error.message}`);
-            logout(); // Se der erro, desloga o usuário
+            console.error("Erro ao buscar dados do dia:", error);
+            activeMotoqueiros = [];
+            try {
+                allPedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`);
+            } catch (pedidosError) {
+                console.error("Erro ao buscar apenas os pedidos:", pedidosError);
+                allPedidos = [];
+            }
+            renderMotoqueiros();
+            renderAllPedidos();
         }
     };
 
-    const setupEventListeners = () => {
-        elements.logoutBtn.addEventListener('click', logout);
-        elements.deliveriesList.addEventListener('click', handleMarkAsDelivered);
-        elements.pixBtn.addEventListener('click', () => elements.pixModal.classList.remove('hidden'));
-        elements.closePixModalBtn.addEventListener('click', () => elements.pixModal.classList.add('hidden'));
-        elements.pixModal.addEventListener('click', (e) => { if(e.target === elements.pixModal) elements.pixModal.classList.add('hidden'); });
+    const populateMasterMotoqueiros = async () => {
+        try {
+            masterMotoqueiros = await fetchJSON(`${API_URL}/motoqueiros`);
+            const options = masterMotoqueiros.map(m => `<option value="${m.nome}"></option>`).join('');
+            elements.motoqueirosDatalist.innerHTML = options;
+        } catch (error) {
+            console.error("Erro ao carregar lista de motoqueiros:", error);
+        }
+    };
+    
+    const refreshAllData = async () => {
+        await populateMasterMotoqueiros();
+        await fetchDataForDate(selectedDate);
     };
 
-    // Função de inicialização da página
-    const init = () => {
-        // A verificação já foi feita. Agora carregamos os dados.
-        loadMotoqueiroData();
+    const changeDate = (days) => {
+        selectedDate.setDate(selectedDate.getDate() + days);
+        fetchDataForDate(selectedDate);
+    };
+
+    function setupEventListeners() {
+        elements.openStartDayModalBtn.addEventListener('click', () => elements.startDayModal.classList.remove('hidden'));
+        elements.closeStartDayModalBtn.addEventListener('click', () => elements.startDayModal.classList.add('hidden'));
+        elements.startDayModal.addEventListener('click', (e) => { if (e.target === elements.startDayModal) elements.startDayModal.classList.add('hidden'); });
+        elements.startDayForm.addEventListener('submit', handleStartDay);
+
+        elements.closeAdjustChickenModalBtn.addEventListener('click', () => elements.adjustChickenModal.classList.add('hidden'));
+        elements.adjustChickenModal.addEventListener('click', (e) => { if (e.target === elements.adjustChickenModal) elements.adjustChickenModal.classList.add('hidden'); });
+        elements.adjustChickenForm.addEventListener('submit', handleAddOrRemoveChickens);
+
+        elements.prevDayBtn.addEventListener('click', () => changeDate(-1));
+        elements.nextDayBtn.addEventListener('click', () => changeDate(1));
+        
+        elements.searchPedidosInput.addEventListener('input', (e) => { 
+            renderAllPedidos(e.target.value);
+        });
+        
+        elements.closeDetailsModalBtn.addEventListener('click', () => {
+            elements.detailsModal.classList.add('hidden');
+            clearInterval(modalPrazoInterval); // Limpa o intervalo ao fechar
+        });
+        elements.detailsModal.addEventListener('click', (e) => { 
+            if (e.target === elements.detailsModal) {
+                elements.detailsModal.classList.add('hidden');
+                clearInterval(modalPrazoInterval); // Limpa o intervalo ao fechar
+            }
+        });
+        
+        elements.motoqueirosList.addEventListener('click', (e) => { 
+            const cardElement = e.target.closest('.motoqueiro-card');
+            const adjustButton = e.target.closest('.adjust-btn');
+
+            if (adjustButton) {
+                const motoqueiroNome = adjustButton.dataset.motoqueiroNome;
+                const action = adjustButton.dataset.action;
+                elements.adjustModalTitle.textContent = action === 'add' ? `Adicionar Frangos para ${motoqueiroNome}` : `Remover Frangos de ${motoqueiroNome}`;
+                elements.adjustChickenForm.dataset.motoqueiroNome = motoqueiroNome;
+                elements.adjustChickenForm.dataset.action = action;
+                elements.adjustChickenAmountInput.value = '';
+                elements.adjustChickenModal.classList.remove('hidden');
+            } else if (cardElement) {
+                openDetailsModal(cardElement.dataset.motoqueiroId);
+            }
+        });
+
+        elements.detailsPedidosList.addEventListener('click', (e) => { 
+            if (e.target.classList.contains('entregar-btn')) handleMarkAsDelivered(e.target.dataset.id); 
+        });
+        
+        elements.detailsModalFooter.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-motoqueiro-btn')) handleDeleteMotoqueiro(e.target.dataset.id);
+            if (e.target.classList.contains('save-route-btn')) handleSaveRoute();
+        });
+
+        // NOVO: Event listener para o botão de logout
+        elements.logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
+    }
+
+    async function initializePage() {
         setupEventListeners();
-    };
+        setupDragAndDrop();
+        setupRouteReordering();
+        await refreshAllData();
+    }
 
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', initializePage);
   </script>
+
 </body>
 </html>

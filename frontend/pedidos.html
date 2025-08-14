@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Painel de Pedidos - Frango da Hora</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- NOVO: Script de autenticação -->
   <script src="auth.js"></script>
 </head>
 <body>
@@ -15,7 +14,6 @@
       <a href="pedidos.html" class="active">Painel de Pedidos</a>
       <a href="motoqueiros.html">Painel de Entregas</a>
       <a href="configuracoes.html">Configurações</a>
-      <!-- NOVO: Botão de Sair -->
       <a href="#" id="logout-btn" style="margin-left: auto; color: #e53e3e;">Sair</a>
     </nav>
     <div class="info-header">
@@ -204,6 +202,12 @@
         bairrosDatalist: document.getElementById('bairros-datalist'),
         logoutBtn: document.getElementById('logout-btn'), // NOVO
     };
+    
+    // NOVO: Função para normalizar texto (remover acentos e converter para minúsculo)
+    const normalizarTexto = (texto) => {
+        if (!texto) return '';
+        return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    };
 
     const formatDateToYYYYMMDD = (date) => {
         const year = date.getFullYear();
@@ -253,7 +257,6 @@
         }
     };
 
-    // NOVO: Função para calcular e formatar o prazo
     const calcularPrazo = (horarioPedido, tempoPrevisto) => {
         if (!horarioPedido || !tempoPrevisto) return '---';
 
@@ -285,7 +288,7 @@
         }
         pedidos.forEach(p => {
             const tr = document.createElement('tr');
-            tr.dataset.pedidoId = p.id; // Adiciona ID para atualização
+            tr.dataset.pedidoId = p.id; 
             tr.dataset.horarioPedido = p.horario_pedido;
             tr.dataset.tempoPrevisto = p.tempo_previsto;
 
@@ -329,7 +332,6 @@
         startPrazoUpdater();
     };
     
-    // NOVO: Função para iniciar/parar o atualizador de prazo
     const startPrazoUpdater = () => {
         if (prazoUpdateInterval) clearInterval(prazoUpdateInterval);
         prazoUpdateInterval = setInterval(() => {
@@ -342,7 +344,7 @@
                     }
                 }
             });
-        }, 60000); // Atualiza a cada 1 minuto
+        }, 60000); 
     };
 
     const populateSelect = (selectId, options) => { const select = document.getElementById(selectId); select.innerHTML = options.map(opt => `<option value="${opt.value !== undefined ? opt.value : opt}">${opt.text !== undefined ? opt.text : opt}</option>`).join(''); };
@@ -526,14 +528,17 @@
         elements.nextDayBtn.addEventListener('click', () => changeDate(1));
         elements.meioFrangoCheckbox.addEventListener('change', updateTotalPrice);
         elements.taxaEntregaInput.addEventListener('input', updateTotalPrice);
+        
+        // ATUALIZADO: Evento de input do bairro para busca inteligente
         elements.clienteBairroInput.addEventListener('input', (e) => {
-            const bairroSelecionado = bairrosConfig.find(b => b.bairro.toLowerCase() === e.target.value.toLowerCase());
+            const bairroDigitadoNormalizado = normalizarTexto(e.target.value);
+            const bairroSelecionado = bairrosConfig.find(b => normalizarTexto(b.bairro) === bairroDigitadoNormalizado);
             if (bairroSelecionado) {
                 elements.taxaEntregaInput.value = bairroSelecionado.taxa.toFixed(2);
                 updateTotalPrice();
             }
         });
-        // NOVO: Event listener para o botão de logout
+        
         elements.logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             logout();
@@ -541,8 +546,6 @@
     }
 
     function init() { 
-        // A verificação de auth já foi feita no topo do script.
-        // Se o script chegou até aqui, o usuário está autorizado.
         populateSelect('canal_venda', ['Telefone', 'Porta']); 
         populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago']); 
         fetchDataForDate(selectedDate); 

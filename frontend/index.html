@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frango da Hora - Faça seu Pedido</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="cliente-page">
+
+  <header class="cliente-header">
+    <div class="logo">
+      Frango <br><strong>da</strong>HORA
+    </div>
+    <a href="login.html" class="login-link">LOGIN</a>
+  </header>
+
+  <main class="cliente-main">
+    <div class="info-bar">
+      <span id="tempo-info"></span>
+    </div>
+
+    <form id="cliente-form" class="cliente-form">
+      <!-- Bloco 1: Tipo de Pedido -->
+      <div id="bloco-1" class="form-bloco visible">
+        <label for="tipo_pedido">Tipo de Pedido:</label>
+        <div class="select-wrapper">
+          <select id="tipo_pedido">
+            <!-- ALTERADO: Adicionado placeholder -->
+            <option value="" disabled selected>Selecione...</option>
+            <option value="Entrega">Entrega</option>
+            <option value="Retirada">Retirada no Local</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Bloco 2: Dados Pessoais -->
+      <div id="bloco-2" class="form-bloco">
+        <!-- ALTERADO: Separador movido para dentro do bloco -->
+        <div class="bloco-separator"></div>
+        <label for="cliente_nome">Nome:</label>
+        <input type="text" id="cliente_nome" placeholder="Seu nome completo" required>
+        <label for="cliente_telefone">Telefone:</label>
+        <input type="tel" id="cliente_telefone" placeholder="Ex: 32 99999-1234" required>
+      </div>
+      
+      <!-- Bloco 3: Endereço -->
+      <div id="bloco-3" class="form-bloco">
+        <!-- ALTERADO: Separador movido para dentro do bloco -->
+        <div class="bloco-separator"></div>
+        <label for="cliente_endereco">Endereço:</label>
+        <input type="text" id="cliente_endereco" placeholder="Nome da Rua Completo, 123" required>
+        
+        <label for="cliente_bairro">Bairro:</label>
+        <div class="select-wrapper">
+            <select id="cliente_bairro" required>
+                <option value="" disabled selected>Selecione seu bairro...</option>
+            </select>
+        </div>
+        <div id="bairro-error" class="error-text hidden">Bairro não encontrado. Por favor, selecione um bairro válido.</div>
+      </div>
+
+      <!-- Bloco 4: Detalhes do Pedido -->
+      <div id="bloco-4" class="form-bloco">
+        <!-- ALTERADO: Separador movido para dentro do bloco -->
+        <div class="bloco-separator"></div>
+        <div class="quantidade-pagamento-grid">
+          <div class="field">
+            <label for="quantidade">Quantidade:</label>
+            <div class="quantidade-input">
+              <button type="button" id="btn-diminuir">-</button>
+              <span id="quantidade_display">1</span>
+              <button type="button" id="btn-aumentar">+</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="forma_pagamento">Forma de Pagamento:</label>
+            <div class="select-wrapper">
+              <select id="forma_pagamento" required>
+                <option value="" disabled selected>Selecione...</option>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Pix">Pix na Entrega</option>
+                <option value="Cartão">Cartão na Entrega</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="preco-total-container">
+          <span>Preço Total:</span>
+          <strong id="preco_total">R$ 0,00</strong>
+        </div>
+        
+        <button type="submit" id="btn-concluir" disabled>Concluir Pedido</button>
+      </div>
+    </form>
+    <div id="success-message" class="success-message hidden">
+      <h2>Pedido Enviado!</h2>
+      <p>Seu pedido foi recebido com sucesso. Obrigado pela preferência!</p>
+    </div>
+  </main>
+
+  <script src="cliente.js"></script>
+
+</body>
+</html>
