@@ -7,7 +7,7 @@ router.post('/', (req, res) => {
     const {
         cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone,
         quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento,
-        canal_venda, picado, observacao, tempo_previsto // NOVO CAMPO
+        canal_venda, picado, observacao, tempo_previsto
     } = req.body;
 
     const inserirPedido = () => {
@@ -82,7 +82,7 @@ router.put('/:id', (req, res) => {
     const {
         cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone,
         quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento,
-        canal_venda, picado, observacao, tempo_previsto // NOVO CAMPO
+        canal_venda, picado, observacao, tempo_previsto
     } = req.body;
 
     const sql = `UPDATE pedidos SET cliente_nome = ?, cliente_endereco = ?, cliente_bairro = ?, cliente_referencia = ?, cliente_telefone = ?, quantidade_frangos = ?, meio_frango = ?, taxa_entrega = ?, preco_total = ?, forma_pagamento = ?, canal_venda = ?, picado = ?, observacao = ?, tempo_previsto = ? WHERE id = ?`;
@@ -96,11 +96,45 @@ router.put('/:id', (req, res) => {
 
 // Rota para atribuir um motoqueiro
 router.put('/:id/atribuir', (req, res) => {
-    const { id } = req.params;
-    const { motoqueiroId } = req.body;
-    db.run("UPDATE pedidos SET motoqueiro_id = ?, status = 'Em Rota' WHERE id = ?", [motoqueiroId, id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Motoqueiro atribuído com sucesso!' });
+    const pedidoIdNum = parseInt(req.params.id, 10);
+    const motoqueiroIdNum = parseInt(req.body.motoqueiroId, 10);
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+
+        const findMaxOrderSql = `
+            SELECT MAX(rota_ordem) as max_ordem 
+            FROM pedidos 
+            WHERE motoqueiro_id = ? AND date(horario_pedido) = date('now', 'localtime')
+        `;
+
+        db.get(findMaxOrderSql, [motoqueiroIdNum], (err, row) => {
+            if (err) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: "Erro ao buscar a ordem da rota: " + err.message });
+            }
+
+            const newOrder = (row && row.max_ordem != null) ? row.max_ordem + 1 : 1;
+
+            const updatePedidoSql = `
+                UPDATE pedidos 
+                SET motoqueiro_id = ?, status = 'Em Rota', rota_ordem = ? 
+                WHERE id = ?
+            `;
+            db.run(updatePedidoSql, [motoqueiroIdNum, newOrder, pedidoIdNum], function(err) {
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: "Erro ao atribuir o pedido: " + err.message });
+                }
+
+                db.run("COMMIT", (commitErr) => {
+                    if (commitErr) {
+                        return res.status(500).json({ error: "Erro ao finalizar a transação: " + commitErr.message });
+                    }
+                    res.json({ message: 'Motoqueiro atribuído com sucesso!' });
+                });
+            });
+        });
     });
 });
 
@@ -122,28 +156,73 @@ router.put('/:id/retirou', (req, res) => {
 
 // Rota para cancelar pedido
 router.put('/:id/cancelar', (req, res) => {
-    db.run("UPDATE pedidos SET status = 'Cancelado', motoqueiro_id = NULL WHERE id = ?", [req.params.id], function(err) {
+    db.run("UPDATE pedidos SET status = 'Cancelado', motoqueiro_id = NULL, rota_ordem = 0 WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: 'Pedido cancelado.' });
     });
 });
 
-// Rota para ordenar a rota de entrega
+// Rota para ordenar a rota de entrega (LÓGICA REFEITA E COM LOGS)
 router.put('/ordenar-rota', (req, res) => {
-    const { ordem } = req.body;
-    if (!ordem || !Array.isArray(ordem)) {
-        return res.status(400).json({ error: 'Formato de dados inválido.' });
+    console.log("--- [DEBUG] ROTA /ordenar-rota ATINGIDA ---");
+    const { ordem, motoqueiroId } = req.body;
+    console.log(`[DEBUG] DADOS RECEBIDOS: motoqueiroId=${motoqueiroId}, ordem=${JSON.stringify(ordem)}`);
+
+    if (!ordem || !Array.isArray(ordem) || !motoqueiroId) {
+        console.error("[DEBUG] ERRO: Dados inválidos recebidos.");
+        return res.status(400).json({ error: 'Dados inválidos. É necessário fornecer a ordem e o ID do motoqueiro.' });
     }
+
+    const motoqueiroIdNum = parseInt(motoqueiroId, 10);
+
     db.serialize(() => {
-        const stmt = db.prepare("UPDATE pedidos SET rota_ordem = ? WHERE id = ?");
-        ordem.forEach((pedidoId, index) => {
-            stmt.run(index + 1, pedidoId);
-        });
-        stmt.finalize((err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: 'Rota de entrega ordenada com sucesso.' });
+        db.run("BEGIN TRANSACTION", (err) => {
+            if (err) {
+                console.error("[DEBUG] ERRO ao iniciar transação:", err.message);
+                return res.status(500).json({ error: err.message });
+            }
+            console.log("[DEBUG] Transação iniciada.");
+
+            const promises = ordem.map((pedidoId, index) => {
+                return new Promise((resolve, reject) => {
+                    const pedidoIdNum = parseInt(pedidoId, 10);
+                    const newOrder = index + 1;
+                    const sql = "UPDATE pedidos SET rota_ordem = ? WHERE id = ? AND motoqueiro_id = ?";
+                    
+                    db.run(sql, [newOrder, pedidoIdNum, motoqueiroIdNum], function(err) {
+                        if (err) {
+                            console.error(`[DEBUG] ERRO no DB ao atualizar pedido ${pedidoIdNum}:`, err.message);
+                            return reject(err);
+                        }
+                        if (this.changes === 0) {
+                            console.warn(`[DEBUG] ATENÇÃO: Nenhuma linha afetada para o pedido ${pedidoIdNum}. O pedido pertence a este motoqueiro?`);
+                        } else {
+                            console.log(`[DEBUG] Pedido ${pedidoIdNum} atualizado para ordem ${newOrder}.`);
+                        }
+                        resolve();
+                    });
+                });
+            });
+
+            Promise.all(promises)
+                .then(() => {
+                    db.run("COMMIT", (commitErr) => {
+                        if (commitErr) {
+                            console.error("[DEBUG] ERRO ao commitar:", commitErr.message);
+                            return res.status(500).json({ error: commitErr.message });
+                        }
+                        console.log("[DEBUG] COMMIT BEM-SUCEDIDO. Rota salva.");
+                        res.json({ message: 'Rota de entrega ordenada com sucesso.' });
+                    });
+                })
+                .catch(error => {
+                    db.run("ROLLBACK");
+                    console.error("[DEBUG] ERRO GERAL, executando ROLLBACK:", error.message);
+                    res.status(500).json({ error: "Erro ao atualizar a rota: " + error.message });
+                });
         });
     });
 });
+
 
 module.exports = router;
