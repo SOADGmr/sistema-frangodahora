@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Painel de Entregas - Frangolândia</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- NOVO: Script de autenticação -->
   <script src="auth.js"></script>
 </head>
 <body>
@@ -15,7 +14,6 @@
       <a href="pedidos.html">Painel de Pedidos</a>
       <a href="motoqueiros.html" class="active">Painel de Entregas</a>
       <a href="configuracoes.html">Configurações</a>
-      <!-- NOVO: Botão de Sair -->
       <a href="#" id="logout-btn" style="margin-left: auto; color: #e53e3e;">Sair</a>
     </nav>
     <div class="info-header">
@@ -82,7 +80,6 @@
   <!-- MODAL DE DETALHES DO MOTOQUEIRO -->
   <div id="details-modal" class="modal-container hidden">
     <section class="form-container">
-        <button id="close-details-modal" class="close-btn">&times;</button>
         <div id="details-modal-header"></div>
         <ul id="details-pedidos-list" class="pedidos-list"></ul>
         <div id="details-modal-footer"></div>
@@ -90,7 +87,6 @@
   </div>
 
   <script>
-    // NOVO: Verifica a autenticação
     const usuarioLogado = checkAuth(['Admin']);
   
     const API_URL = '/api';
@@ -109,7 +105,6 @@
         frangosNaBagStartInput: document.getElementById('frangos-na-bag-start'),
         searchPedidosInput: document.getElementById('search-pedidos'),
         detailsModal: document.getElementById('details-modal'),
-        closeDetailsModalBtn: document.getElementById('close-details-modal'),
         detailsModalHeader: document.getElementById('details-modal-header'),
         detailsPedidosList: document.getElementById('details-pedidos-list'),
         detailsModalFooter: document.getElementById('details-modal-footer'),
@@ -124,7 +119,7 @@
         adjustChickenForm: document.getElementById('adjust-chicken-form'),
         adjustModalTitle: document.getElementById('adjust-modal-title'),
         adjustChickenAmountInput: document.getElementById('adjust-chicken-amount'),
-        logoutBtn: document.getElementById('logout-btn'), // NOVO
+        logoutBtn: document.getElementById('logout-btn'),
     };
 
     const formatDateToYYYYMMDD = (date) => {
@@ -144,7 +139,6 @@
         return `${day}/${month}`;
     };
     
-    // NOVO: Função para calcular e formatar o prazo
     const calcularPrazo = (horarioPedido, tempoPrevisto) => {
         if (!horarioPedido || !tempoPrevisto) return '---';
 
@@ -235,8 +229,9 @@
         const motoqueiro = activeMotoqueiros.find(m => m.id == motoqueiroId);
         if (!motoqueiro) return;
         const todosPedidosDoDia = [...motoqueiro.pedidos_em_rota, ...motoqueiro.pedidos_entregues];
-        const totalVendas = todosPedidosDoDia.reduce((sum, p) => sum + p.preco_total, 0);
-        const totalDinheiro = todosPedidosDoDia.filter(p => p.forma_pagamento === 'Dinheiro').reduce((sum, p) => sum + p.preco_total, 0);
+        const totalVendas = todosPedidosDoDia.reduce((sum, p) => sum + (p.preco_total || 0), 0);
+        const totalDinheiro = todosPedidosDoDia.filter(p => p.forma_pagamento === 'Dinheiro').reduce((sum, p) => sum + (p.preco_total || 0), 0);
+
         const frangosEntregues = motoqueiro.pedidos_entregues.reduce((sum, p) => sum + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
         const frangosAtribuidos = motoqueiro.pedidos_em_rota.reduce((sum, p) => sum + p.quantidade_frangos + (p.meio_frango ? 0.5 : 0), 0);
         const frangosDisponiveis = motoqueiro.frangos_na_bag - frangosAtribuidos - frangosEntregues;
@@ -244,10 +239,12 @@
         for(let i = 0; i < Math.floor(frangosEntregues); i++) { squaresHtml += `<div class="chicken-square square-delivered"></div>`; }
         for(let i = 0; i < Math.floor(frangosAtribuidos); i++) { squaresHtml += `<div class="chicken-square square-assigned"></div>`; }
         for(let i = 0; i < Math.floor(frangosDisponiveis); i++) { squaresHtml += `<div class="chicken-square square-available"></div>`; }
+        
         elements.detailsModalHeader.innerHTML = `
             <div class="modal-header-details">
                 <div class="modal-title-bar">
                     <h2 style="text-align: left; margin-bottom: 0;">${motoqueiro.nome}</h2>
+                    <button class="close-btn">&times;</button>
                 </div>
                 <div class="modal-stats-grid">
                     <div class="modal-stat">
@@ -264,50 +261,87 @@
                     </div>
                 </div>
             </div>`;
+        
         elements.detailsPedidosList.innerHTML = '';
         if (motoqueiro.pedidos_em_rota.length > 0) {
             const rotaHeader = document.createElement('h3');
             rotaHeader.className = 'modal-section-header';
             rotaHeader.textContent = 'Em Rota (Arraste para ordenar)';
             elements.detailsPedidosList.appendChild(rotaHeader);
-            motoqueiro.pedidos_em_rota.forEach(p => {
+
+            const rotaListContainer = document.createElement('ul');
+            rotaListContainer.id = 'rota-list'; 
+            rotaListContainer.className = 'pedidos-list';
+
+            // --- LÓGICA DE ORDENAÇÃO NO FRONTEND ---
+            const sortedPedidos = motoqueiro.pedidos_em_rota.sort((a, b) => (a.rota_ordem || 999) - (b.rota_ordem || 999));
+
+            sortedPedidos.forEach(p => {
                 const li = document.createElement('li');
                 li.className = 'pedido-item route-draggable';
                 li.draggable = true;
                 li.dataset.pedidoId = p.id;
+                li.dataset.ordem = p.rota_ordem; // Adiciona o atributo data-ordem
                 li.dataset.horarioPedido = p.horario_pedido;
                 li.dataset.tempoPrevisto = p.tempo_previsto;
                 const prazoHtml = calcularPrazo(p.horario_pedido, p.tempo_previsto);
                 
-                // ATUALIZADO: Nova estrutura HTML para o grid
                 li.innerHTML = `
-                    <div class="grid-container">
-                        <span class="grid-cliente">#${p.id} - ${p.cliente_nome || 'N/A'}</span>
-                        <strong class="grid-prazo prazo-cell">${prazoHtml}</strong>
-                        <small class="grid-endereco">${p.cliente_endereco}, ${p.cliente_bairro || ''}</small>
-                        <small class="grid-pagamento">${p.forma_pagamento}</small>
-                        <small class="grid-telefone">📞 ${p.cliente_telefone || 'N/A'}</small>
-                        <button class="entregar-btn grid-entregar-btn" data-id="${p.id}">Entregue</button>
+                    <div class="drag-handle">⠿</div>
+                    <div class="pedido-card-content">
+                        <div class="pedido-card-header">
+                            <span class="cliente-nome">#${p.id} - ${p.cliente_nome || 'N/A'}</span>
+                            <strong class="prazo-cell">${prazoHtml}</strong>
+                        </div>
+                        <div class="pedido-card-body">
+                            <p class="endereco">${p.cliente_endereco || ''}, ${p.cliente_bairro || ''}</p>
+                            <p class="telefone">📞 ${p.cliente_telefone || 'N/A'}</p>
+                        </div>
+                        <div class="pedido-card-footer">
+                            <span class="pagamento">💳 ${p.forma_pagamento} - <strong>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</strong></span>
+                            <button class="entregar-btn" data-id="${p.id}">Entregue</button>
+                        </div>
                     </div>
                 `;
-                elements.detailsPedidosList.appendChild(li);
+                rotaListContainer.appendChild(li);
             });
+            elements.detailsPedidosList.appendChild(rotaListContainer);
         }
+        
         if (motoqueiro.pedidos_entregues.length > 0) {
             const entreguesHeader = document.createElement('h3');
             entreguesHeader.className = 'modal-section-header';
             entreguesHeader.textContent = 'Entregues Hoje';
             elements.detailsPedidosList.appendChild(entreguesHeader);
+
             motoqueiro.pedidos_entregues.forEach(p => {
                 const li = document.createElement('li');
-                li.className = 'pedido-item pedido-entregue-modal';
-                li.innerHTML = `<div class="pedido-info-detailed"><div class="detailed-info-header"><span>#${p.id} - ${p.cliente_nome || 'N/A'}</span><strong>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</strong></div><small class="detailed-info-address">${p.cliente_endereco}, ${p.cliente_bairro || ''}</small><div class="detailed-info-footer"><small>📞 ${p.cliente_telefone || 'N/A'}</small><small>💳 ${p.forma_pagamento}</small></div></div><span class="status status-entregue">Entregue</span>`;
+                li.className = 'pedido-item card-entregue';
+                li.innerHTML = `
+                    <div class="delivered-icon">✓</div>
+                    <div class="pedido-card-content">
+                        <div class="pedido-card-header">
+                            <span class="cliente-nome">#${p.id} - ${p.cliente_nome || 'N/A'}</span>
+                            <strong class="prazo-cell">Finalizado</strong>
+                        </div>
+                        <div class="pedido-card-body">
+                            <p class="endereco">${p.cliente_endereco || ''}, ${p.cliente_bairro || ''}</p>
+                            <p class="telefone">📞 ${p.cliente_telefone || 'N/A'}</p>
+                        </div>
+                        <div class="pedido-card-footer">
+                            <span class="pagamento">💳 ${p.forma_pagamento} - <strong>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</strong></span>
+                            <span class="status status-entregue">Entregue</span>
+                        </div>
+                    </div>
+                `;
                 elements.detailsPedidosList.appendChild(li);
             });
         }
+        
         if (todosPedidosDoDia.length === 0) {
             elements.detailsPedidosList.innerHTML = '<div class="no-pedidos">Nenhum pedido atribuído hoje.</div>';
         }
+        
         elements.detailsModalFooter.innerHTML = `
             <div class="modal-footer-actions">
                 <button class="delete-motoqueiro-btn" data-id="${motoqueiro.id}">Excluir Motoqueiro</button>
@@ -315,7 +349,6 @@
             </div>`;
         elements.detailsModal.classList.remove('hidden');
         
-        // Inicia o atualizador de prazo para o modal
         modalPrazoInterval = setInterval(() => {
             document.querySelectorAll('#details-pedidos-list .route-draggable').forEach(li => {
                 const prazoCell = li.querySelector('.prazo-cell');
@@ -409,13 +442,16 @@
         } 
     };
 
-    const handleSaveRoute = async () => {
-        const orderedIds = [...elements.detailsPedidosList.querySelectorAll('.route-draggable')].map(item => item.dataset.pedidoId);
+    const handleSaveRoute = async (motoqueiroId) => {
+        const orderedIds = [...document.querySelectorAll('#rota-list .route-draggable')].map(item => item.dataset.pedidoId);
         try {
             await fetchJSON(`${API_URL}/pedidos/ordenar-rota`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ordem: orderedIds })
+                body: JSON.stringify({ 
+                    ordem: orderedIds, 
+                    motoqueiroId: motoqueiroId
+                })
             });
             alert('Rota salva com sucesso!');
             elements.detailsModal.classList.add('hidden');
@@ -456,26 +492,52 @@
         });
     }
 
+    // --- FUNCIONALIDADE DE REORDENAÇÃO REATIVADA ---
     function setupRouteReordering() {
         let draggedItem = null;
-        elements.detailsPedidosList.addEventListener('dragstart', e => { if (e.target.classList.contains('route-draggable')) { draggedItem = e.target; setTimeout(() => e.target.classList.add('dragging-route'), 0); } });
-        elements.detailsPedidosList.addEventListener('dragend', e => { if (draggedItem) { draggedItem.classList.remove('dragging-route'); draggedItem = null; } });
+        
+        elements.detailsPedidosList.addEventListener('dragstart', e => { 
+            if (e.target.classList.contains('route-draggable')) { 
+                draggedItem = e.target; 
+                setTimeout(() => e.target.classList.add('dragging-route'), 0); 
+            } 
+        });
+
+        elements.detailsPedidosList.addEventListener('dragend', e => { 
+            if (draggedItem) { 
+                draggedItem.classList.remove('dragging-route'); 
+                draggedItem = null; 
+            } 
+        });
+
         elements.detailsPedidosList.addEventListener('dragover', e => {
             e.preventDefault();
-            const afterElement = getDragAfterElement(elements.detailsPedidosList, e.clientY);
-            const list = e.target.closest('.pedidos-list');
+            
+            const list = e.target.closest('#rota-list');
+            if (!list) {
+                return;
+            }
+            
+            const afterElement = getDragAfterElement(list, e.clientY);
             if(draggedItem) {
-                if (afterElement == null) { list.appendChild(draggedItem); } 
-                else { list.insertBefore(draggedItem, afterElement); }
+                if (afterElement == null) { 
+                    list.appendChild(draggedItem); 
+                } else { 
+                    list.insertBefore(draggedItem, afterElement); 
+                }
             }
         });
+
         function getDragAfterElement(container, y) {
             const draggableElements = [...container.querySelectorAll('.route-draggable:not(.dragging-route)')];
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
-                if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } 
-                else { return closest; }
+                if (offset < 0 && offset > closest.offset) { 
+                    return { offset: offset, element: child }; 
+                } else { 
+                    return closest; 
+                }
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
     }
@@ -543,14 +605,10 @@
             renderAllPedidos(e.target.value);
         });
         
-        elements.closeDetailsModalBtn.addEventListener('click', () => {
-            elements.detailsModal.classList.add('hidden');
-            clearInterval(modalPrazoInterval); // Limpa o intervalo ao fechar
-        });
         elements.detailsModal.addEventListener('click', (e) => { 
-            if (e.target === elements.detailsModal) {
+            if (e.target === elements.detailsModal || e.target.closest('.close-btn')) {
                 elements.detailsModal.classList.add('hidden');
-                clearInterval(modalPrazoInterval); // Limpa o intervalo ao fechar
+                clearInterval(modalPrazoInterval);
             }
         });
         
@@ -576,11 +634,14 @@
         });
         
         elements.detailsModalFooter.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-motoqueiro-btn')) handleDeleteMotoqueiro(e.target.dataset.id);
-            if (e.target.classList.contains('save-route-btn')) handleSaveRoute();
+            if (e.target.classList.contains('delete-motoqueiro-btn')) {
+                handleDeleteMotoqueiro(e.target.dataset.id);
+            }
+            if (e.target.classList.contains('save-route-btn')) {
+                handleSaveRoute(e.target.dataset.id);
+            }
         });
 
-        // NOVO: Event listener para o botão de logout
         elements.logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             logout();
@@ -590,7 +651,7 @@
     async function initializePage() {
         setupEventListeners();
         setupDragAndDrop();
-        setupRouteReordering();
+        setupRouteReordering(); // Reativado
         await refreshAllData();
     }
 
