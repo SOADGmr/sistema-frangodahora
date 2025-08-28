@@ -153,13 +153,13 @@
   </div>
 
   <script>
-    // NOVO: Verifica a autenticação antes de tudo
     const usuarioLogado = checkAuth(['Admin']);
 
     const API_URL = '/api';
     let selectedDate = new Date();
     let bairrosConfig = [];
     let prazoUpdateInterval;
+    let estoqueAtual = 0; // NOVO: Variável para guardar o estoque
 
     const elements = {
         pedidosTbody: document.getElementById('pedidosTbody'),
@@ -200,10 +200,9 @@
         taxaEntregaWrapper: document.getElementById('taxaEntregaWrapper'),
         clienteBairroInput: document.getElementById('cliente_bairro'),
         bairrosDatalist: document.getElementById('bairros-datalist'),
-        logoutBtn: document.getElementById('logout-btn'), // NOVO
+        logoutBtn: document.getElementById('logout-btn'),
     };
     
-    // NOVO: Função para normalizar texto (remover acentos e converter para minúsculo)
     const normalizarTexto = (texto) => {
         if (!texto) return '';
         return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -227,8 +226,29 @@
     };
 
     const updateDateDisplay = () => { elements.currentDateDisplay.textContent = formatDisplayDate(selectedDate); elements.pedidosTitle.textContent = `Pedidos de ${formatDisplayDate(selectedDate)}`; };
-    const fetchJSON = async (url, options = {}) => { const response = await fetch(url, options); if (!response.ok) { const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' })); throw new Error(errorData.error); } const text = await response.text(); return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; };
-    const fetchEstoque = async (dateString) => { try { const data = await fetchJSON(`${API_URL}/estoque?data=${dateString}`); elements.estoqueDisplay.textContent = `Estoque: ${data.quantidade_atual} / ${data.quantidade_inicial}`; elements.estoqueDisplay.style.color = data.quantidade_atual > 10 ? '#2f855a' : '#c53030'; } catch (error) { elements.estoqueDisplay.textContent = 'Erro ao carregar estoque'; } };
+    
+    const fetchJSON = async (url, options = {}) => { 
+        const response = await fetch(url, options); 
+        if (!response.ok) { 
+            const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' })); 
+            throw new Error(errorData.error); 
+        } 
+        const text = await response.text(); 
+        return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; 
+    };
+
+    // ATUALIZADO: Agora armazena o estoque na variável global
+    const fetchEstoque = async (dateString) => { 
+        try { 
+            const data = await fetchJSON(`${API_URL}/estoque?data=${dateString}`); 
+            estoqueAtual = data.quantidade_atual; // Armazena o valor
+            elements.estoqueDisplay.textContent = `Estoque: ${data.quantidade_atual} / ${data.quantidade_inicial}`; 
+            elements.estoqueDisplay.style.color = data.quantidade_atual > 10 ? '#2f855a' : '#c53030'; 
+        } catch (error) { 
+            estoqueAtual = 0; // Zera em caso de erro
+            elements.estoqueDisplay.textContent = 'Erro ao carregar estoque'; 
+        } 
+    };
     
     const fetchSettings = async () => {
         try {
@@ -246,7 +266,14 @@
     };
 
     const fetchPedidos = async (dateString) => { try { const pedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`); renderPedidos(pedidos); } catch (error) { elements.pedidosTbody.innerHTML = `<tr><td colspan="8">${error.message}</td></tr>`; } };
-    const fetchDataForDate = (date) => { const dateString = formatDateToYYYYMMDD(date); updateDateDisplay(); fetchPedidos(dateString); fetchEstoque(dateString); };
+    
+    // ATUALIZADO: Agora o fetchEstoque é chamado aqui também
+    const fetchDataForDate = (date) => { 
+        const dateString = formatDateToYYYYMMDD(date); 
+        updateDateDisplay(); 
+        fetchPedidos(dateString); 
+        fetchEstoque(dateString); 
+    };
     
     const fetchBairros = async () => {
         try {
@@ -259,24 +286,18 @@
 
     const calcularPrazo = (horarioPedido, tempoPrevisto) => {
         if (!horarioPedido || !tempoPrevisto) return '---';
-
         const agora = new Date();
         const horaPedidoDate = new Date(horarioPedido);
         const horaPrevista = new Date(horaPedidoDate.getTime() + tempoPrevisto * 60000);
-
         const diff = horaPrevista - agora;
         const isAtrasado = diff < 0;
         const diffAbs = Math.abs(diff);
-
         const horas = Math.floor(diffAbs / (1000 * 60 * 60));
         const minutos = Math.floor((diffAbs % (1000 * 60 * 60)) / (1000 * 60));
-
         const hFormat = String(horas).padStart(2, '0');
         const mFormat = String(minutos).padStart(2, '0');
-        
         const classe = isAtrasado ? 'prazo-atrasado' : 'prazo-ok';
         const sinal = isAtrasado ? '-' : '';
-
         return `<span class="prazo ${classe}">${sinal}${hFormat}:${mFormat}</span>`;
     };
 
@@ -291,15 +312,12 @@
             tr.dataset.pedidoId = p.id; 
             tr.dataset.horarioPedido = p.horario_pedido;
             tr.dataset.tempoPrevisto = p.tempo_previsto;
-
             const statusClass = p.status.toLowerCase().replace(' ', '-');
             tr.className = `status-row-${statusClass}`;
-            
             let actionButtonsHTML = '';
             const isPendente = p.status === 'Pendente';
             const isRetirada = p.cliente_endereco === 'Retirada';
             const totalFrangos = p.quantidade_frangos + (p.meio_frango ? 0.5 : 0);
-
             if (isPendente) {
                 if (isRetirada) {
                     actionButtonsHTML = `<button class="action-btn retirou-btn" data-id="${p.id}">Retirou</button>`;
@@ -309,9 +327,7 @@
             } else if (p.status === 'Em Rota') {
                 actionButtonsHTML = `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Reatribuir</button>`;
             }
-
             const prazoHtml = (p.status === 'Em Rota' || p.status === 'Pendente') ? calcularPrazo(p.horario_pedido, p.tempo_previsto) : '---';
-
             tr.innerHTML = `
                 <td>${p.id}</td>
                 <td>${p.cliente_nome || 'N/A'}<br><small>${p.cliente_telefone || ''}</small></td>
@@ -440,6 +456,15 @@
         e.preventDefault(); 
         const id = elements.pedidoIdInput.value; 
         const isEditMode = !!id; 
+        
+        // NOVO: Verificação de estoque antes de enviar
+        const quantidadePedido = parseInt(document.getElementById('quantidade_frangos').value) + (document.getElementById('meio_frango').checked ? 0.5 : 0);
+        if (!isEditMode && quantidadePedido > estoqueAtual) {
+            elements.pedidoFormMessage.textContent = `Erro: Estoque insuficiente. Restam apenas ${estoqueAtual} frangos.`;
+            elements.pedidoFormMessage.className = 'form-message error';
+            return;
+        }
+
         const url = isEditMode ? `${API_URL}/pedidos/${id}` : `${API_URL}/pedidos`; 
         const method = isEditMode ? 'PUT' : 'POST'; 
         const dadosPedido = { 
@@ -508,7 +533,15 @@
     const changeDate = (days) => { selectedDate.setDate(selectedDate.getDate() + days); fetchDataForDate(selectedDate); };
 
     function setupEventListeners() {
-        elements.fab.addEventListener('click', () => openPedidoModal('create'));
+        // ATUALIZADO: Event listener do FAB com verificação de estoque
+        elements.fab.addEventListener('click', () => {
+            if (estoqueAtual <= 0) {
+                alert('Estoque esgotado! Não é possível criar novos pedidos. Por favor, atualize o estoque inicial do dia.');
+                return;
+            }
+            openPedidoModal('create');
+        });
+
         elements.closePedidoModalBtn.addEventListener('click', () => closeModal(elements.pedidoModal));
         elements.pedidoModal.addEventListener('click', (e) => e.target === elements.pedidoModal && closeModal(elements.pedidoModal));
         elements.updateStockBtn.addEventListener('click', () => openModal(elements.estoqueModal));
@@ -529,7 +562,6 @@
         elements.meioFrangoCheckbox.addEventListener('change', updateTotalPrice);
         elements.taxaEntregaInput.addEventListener('input', updateTotalPrice);
         
-        // ATUALIZADO: Evento de input do bairro para busca inteligente
         elements.clienteBairroInput.addEventListener('input', (e) => {
             const bairroDigitadoNormalizado = normalizarTexto(e.target.value);
             const bairroSelecionado = bairrosConfig.find(b => normalizarTexto(b.bairro) === bairroDigitadoNormalizado);

@@ -5,7 +5,8 @@ const db = require('../db');
 // ROTA GET ATUALIZADA para buscar estoque por data
 router.get('/', (req, res) => {
     const { data } = req.query;
-    const dateToQuery = data || new Date().toISOString().slice(0, 10);
+    // Se uma data é fornecida pelo cliente, usa ela. Senão, usa a data local do servidor.
+    const dateToQuery = data || new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
     Promise.all([
         new Promise((resolve, reject) => {
@@ -16,18 +17,19 @@ router.get('/', (req, res) => {
             });
         }),
         new Promise((resolve, reject) => {
-            // ATUALIZADO para somar frangos inteiros e meios frangos
-            const sql = `SELECT SUM(quantidade_frangos + (meio_frango * 0.5)) AS total_vendido FROM pedidos WHERE status != 'Cancelado' AND date(horario_pedido, 'localtime') = ?`;
+            // CORRIGIDO: Removido o 'localtime' para evitar cálculo duplo de fuso horário.
+            const sql = `SELECT SUM(quantidade_frangos + (meio_frango * 0.5)) AS total_vendido FROM pedidos WHERE status != 'Cancelado' AND date(horario_pedido) = ?`;
             db.get(sql, [dateToQuery], (err, row) => {
                 if (err) return reject(err);
-                resolve(row ? row.total_vendido : 0);
+                // Garante que o valor seja 0 se não houver vendas
+                resolve(row && row.total_vendido ? row.total_vendido : 0);
             });
         })
     ]).then(([estoqueInicial, totalVendido]) => {
-        const estoqueAtual = estoqueInicial - (totalVendido || 0);
+        const estoqueAtual = estoqueInicial - totalVendido;
         res.json({
             quantidade_inicial: estoqueInicial,
-            total_vendido: totalVendido || 0,
+            total_vendido: totalVendido,
             quantidade_atual: estoqueAtual
         });
     }).catch(err => {

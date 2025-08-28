@@ -2,13 +2,45 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Rota para criar um novo pedido
+// Rota para criar um novo pedido (COM VERIFICAÇÃO DE ESTOQUE CORRIGIDA)
 router.post('/', (req, res) => {
     const {
         cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone,
         quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento,
         canal_venda, picado, observacao, tempo_previsto
     } = req.body;
+
+    const quantidadePedido = Number(quantidade_frangos) + (meio_frango ? 0.5 : 0);
+    
+    // Usa a data local do servidor para a verificação, garantindo consistência.
+    const serverLocalDate = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+
+    Promise.all([
+        new Promise((resolve, reject) => {
+            db.get(`SELECT quantidade_inicial FROM estoque WHERE data = ?`, [serverLocalDate], (err, row) => {
+                if (err) return reject(err);
+                resolve(row ? row.quantidade_inicial : 0);
+            });
+        }),
+        new Promise((resolve, reject) => {
+            // CORRIGIDO: Removido o 'localtime' para evitar cálculo duplo de fuso horário.
+            db.get(`SELECT SUM(quantidade_frangos + (meio_frango * 0.5)) AS total_vendido FROM pedidos WHERE status != 'Cancelado' AND date(horario_pedido) = ?`, [serverLocalDate], (err, row) => {
+                if (err) return reject(err);
+                resolve(row && row.total_vendido ? row.total_vendido : 0);
+            });
+        })
+    ]).then(([estoqueInicial, totalVendido]) => {
+        const estoqueAtual = estoqueInicial - totalVendido;
+
+        if (estoqueAtual < quantidadePedido) {
+            return res.status(400).json({ error: `Estoque insuficiente. Restam apenas ${estoqueAtual} frangos.` });
+        }
+        
+        inserirPedido();
+
+    }).catch(err => {
+        res.status(500).json({ error: 'Erro ao verificar o estoque: ' + err.message });
+    });
 
     const inserirPedido = () => {
         const sql = `INSERT INTO pedidos (cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone, quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento, canal_venda, status, horario_pedido, picado, observacao, tempo_previsto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendente', datetime('now', 'localtime'), ?, ?, ?)`;
@@ -28,14 +60,9 @@ router.post('/', (req, res) => {
             if (!row) {
                 db.run('INSERT INTO taxas_bairro (bairro, taxa) VALUES (?, ?)', [cliente_bairro, taxa_entrega], (err) => {
                     if (err) console.error("Erro ao auto-cadastrar bairro:", err.message);
-                    inserirPedido();
                 });
-            } else {
-                inserirPedido();
             }
         });
-    } else {
-        inserirPedido();
     }
 });
 
@@ -162,67 +189,37 @@ router.put('/:id/cancelar', (req, res) => {
     });
 });
 
-// Rota para ordenar a rota de entrega (LÓGICA REFEITA E COM LOGS)
+// Rota para ordenar a rota de entrega
 router.put('/ordenar-rota', (req, res) => {
-    console.log("--- [DEBUG] ROTA /ordenar-rota ATINGIDA ---");
     const { ordem, motoqueiroId } = req.body;
-    console.log(`[DEBUG] DADOS RECEBIDOS: motoqueiroId=${motoqueiroId}, ordem=${JSON.stringify(ordem)}`);
 
     if (!ordem || !Array.isArray(ordem) || !motoqueiroId) {
-        console.error("[DEBUG] ERRO: Dados inválidos recebidos.");
         return res.status(400).json({ error: 'Dados inválidos. É necessário fornecer a ordem e o ID do motoqueiro.' });
     }
-
     const motoqueiroIdNum = parseInt(motoqueiroId, 10);
-
     db.serialize(() => {
-        db.run("BEGIN TRANSACTION", (err) => {
-            if (err) {
-                console.error("[DEBUG] ERRO ao iniciar transação:", err.message);
-                return res.status(500).json({ error: err.message });
-            }
-            console.log("[DEBUG] Transação iniciada.");
-
-            const promises = ordem.map((pedidoId, index) => {
-                return new Promise((resolve, reject) => {
-                    const pedidoIdNum = parseInt(pedidoId, 10);
-                    const newOrder = index + 1;
-                    const sql = "UPDATE pedidos SET rota_ordem = ? WHERE id = ? AND motoqueiro_id = ?";
-                    
-                    db.run(sql, [newOrder, pedidoIdNum, motoqueiroIdNum], function(err) {
-                        if (err) {
-                            console.error(`[DEBUG] ERRO no DB ao atualizar pedido ${pedidoIdNum}:`, err.message);
-                            return reject(err);
-                        }
-                        if (this.changes === 0) {
-                            console.warn(`[DEBUG] ATENÇÃO: Nenhuma linha afetada para o pedido ${pedidoIdNum}. O pedido pertence a este motoqueiro?`);
-                        } else {
-                            console.log(`[DEBUG] Pedido ${pedidoIdNum} atualizado para ordem ${newOrder}.`);
-                        }
-                        resolve();
-                    });
+        db.run("BEGIN TRANSACTION");
+        const promises = ordem.map((pedidoId, index) => {
+            return new Promise((resolve, reject) => {
+                const sql = "UPDATE pedidos SET rota_ordem = ? WHERE id = ? AND motoqueiro_id = ?";
+                db.run(sql, [index + 1, parseInt(pedidoId, 10), motoqueiroIdNum], function(err) {
+                    if (err) reject(err);
+                    else resolve();
                 });
             });
-
-            Promise.all(promises)
-                .then(() => {
-                    db.run("COMMIT", (commitErr) => {
-                        if (commitErr) {
-                            console.error("[DEBUG] ERRO ao commitar:", commitErr.message);
-                            return res.status(500).json({ error: commitErr.message });
-                        }
-                        console.log("[DEBUG] COMMIT BEM-SUCEDIDO. Rota salva.");
-                        res.json({ message: 'Rota de entrega ordenada com sucesso.' });
-                    });
-                })
-                .catch(error => {
-                    db.run("ROLLBACK");
-                    console.error("[DEBUG] ERRO GERAL, executando ROLLBACK:", error.message);
-                    res.status(500).json({ error: "Erro ao atualizar a rota: " + error.message });
-                });
         });
+        Promise.all(promises)
+            .then(() => {
+                db.run("COMMIT", (commitErr) => {
+                    if (commitErr) return res.status(500).json({ error: commitErr.message });
+                    res.json({ message: 'Rota de entrega ordenada com sucesso.' });
+                });
+            })
+            .catch(error => {
+                db.run("ROLLBACK");
+                res.status(500).json({ error: "Erro ao atualizar a rota: " + error.message });
+            });
     });
 });
-
 
 module.exports = router;
