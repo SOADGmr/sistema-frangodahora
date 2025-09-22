@@ -3,9 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Configurações - Frangolândia</title>
+  <title>Configurações - Frango da Hora</title>
   <link rel="stylesheet" href="style.css" />
   <script src="auth.js"></script>
+  <style>
+    /* Estilo para o switch de Ativar/Desativar */
+    .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #48bb78; }
+    input:checked + .slider:before { transform: translateX(26px); }
+  </style>
 </head>
 <body>
 
@@ -33,14 +42,11 @@
               <th>Ações</th>
             </tr>
           </thead>
-          <tbody id="bairrosTbody">
-            <!-- Linhas da tabela serão inseridas aqui -->
-          </tbody>
+          <tbody id="bairrosTbody"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- NOVO: Seção de Gerenciamento de Usuários -->
     <div class="pedidos-container" style="margin-top: 1.5rem;">
         <div class="info-header" style="margin-bottom: 1.5rem;">
             <h2>Gerenciamento de Usuários</h2>
@@ -56,11 +62,30 @@
                         <th>Ações</th>
                     </tr>
                 </thead>
-                <tbody id="usersTbody">
-                    <!-- Linhas de usuários serão inseridas aqui -->
-                </tbody>
+                <tbody id="usersTbody"></tbody>
             </table>
         </div>
+    </div>
+
+    <!-- NOVO: Seção de Integração UaiRango -->
+    <div class="pedidos-container" style="margin-top: 1.5rem;">
+      <div class="info-header" style="margin-bottom: 1.5rem;">
+          <h2>Integração UaiRango</h2>
+          <button id="add-uairango-btn" class="action-btn-header">Adicionar Estabelecimento</button>
+      </div>
+      <div class="table-wrapper">
+          <table id="uairangoTable">
+              <thead>
+                  <tr>
+                      <th>Nome</th>
+                      <th>ID Estabelecimento</th>
+                      <th>Ativo</th>
+                      <th>Ações</th>
+                  </tr>
+              </thead>
+              <tbody id="uairangoTbody"></tbody>
+          </table>
+      </div>
     </div>
   </main>
 
@@ -84,7 +109,7 @@
     </section>
   </div>
 
-  <!-- NOVO: MODAL PARA ADICIONAR USUÁRIO -->
+  <!-- MODAL PARA ADICIONAR USUÁRIO -->
   <div id="user-modal" class="modal-container hidden">
     <section class="form-container" style="max-width: 500px;">
         <button id="close-user-modal" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
@@ -109,6 +134,29 @@
         </form>
     </section>
   </div>
+  
+  <!-- NOVO: MODAL PARA ADICIONAR ESTABELECIMENTO UAIRANGO -->
+  <div id="uairango-modal" class="modal-container hidden">
+    <section class="form-container" style="max-width: 500px;">
+        <button id="close-uairango-modal" class="close-btn" style="position: absolute; top: 10px; right: 15px;">&times;</button>
+        <h2>Adicionar Estabelecimento UaiRango</h2>
+        <form id="uairango-form">
+            <div class="form-field">
+                <label for="uairango-nome">Nome do Estabelecimento (para sua referência)</label>
+                <input type="text" id="uairango-nome" required placeholder="Ex: Frango da Hora - Centro">
+            </div>
+            <div class="form-field">
+                <label for="uairango-id">ID do Estabelecimento (fornecido pelo UaiRango)</label>
+                <input type="number" id="uairango-id" required>
+            </div>
+            <div class="form-field">
+              <label for="uairango-token">Token de Acesso (Developer Token)</label>
+              <input type="text" id="uairango-token" required>
+          </div>
+            <button type="submit">Salvar</button>
+        </form>
+    </section>
+  </div>
 
 
   <script>
@@ -127,16 +175,23 @@
         bairroNomeInput: document.getElementById('bairro-nome'),
         bairroTaxaInput: document.getElementById('bairro-taxa'),
         logoutBtn: document.getElementById('logout-btn'),
-        // NOVOS ELEMENTOS
         usersTbody: document.getElementById('usersTbody'),
         addUserBtn: document.getElementById('add-user-btn'),
         userModal: document.getElementById('user-modal'),
         closeUserModalBtn: document.getElementById('close-user-modal'),
         userForm: document.getElementById('user-form'),
-        userModalTitle: document.getElementById('user-modal-title'),
         userUsuarioInput: document.getElementById('user-usuario'),
         userSenhaInput: document.getElementById('user-senha'),
         userCargoSelect: document.getElementById('user-cargo'),
+        // NOVOS ELEMENTOS UAIRANGO
+        uairangoTbody: document.getElementById('uairangoTbody'),
+        addUairangoBtn: document.getElementById('add-uairango-btn'),
+        uairangoModal: document.getElementById('uairango-modal'),
+        closeUairangoModalBtn: document.getElementById('close-uairango-modal'),
+        uairangoForm: document.getElementById('uairango-form'),
+        uairangoNomeInput: document.getElementById('uairango-nome'),
+        uairangoIdInput: document.getElementById('uairango-id'),
+        uairangoTokenInput: document.getElementById('uairango-token'),
     };
 
     const fetchJSON = async (url, options = {}) => {
@@ -159,25 +214,16 @@
         }
         bairros.forEach(bairro => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${bairro.bairro}</td>
-                <td>R$ ${bairro.taxa.toFixed(2)}</td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="action-btn edit-btn" data-id="${bairro.id}">Editar</button>
-                        <button class="action-btn delete-btn" data-id="${bairro.id}">Excluir</button>
-                    </div>
-                </td>
-            `;
+            tr.innerHTML = `<td>${bairro.bairro}</td><td>R$ ${bairro.taxa.toFixed(2)}</td><td><div class="action-buttons"><button class="action-btn edit-btn" data-id="${bairro.id}">Editar</button><button class="action-btn delete-btn" data-id="${bairro.id}">Excluir</button></div></td>`;
             elements.bairrosTbody.appendChild(tr);
         });
     };
-    const loadBairros = async () => { try { const bairros = await fetchJSON(`${API_URL}/configuracoes/taxas`); renderBairros(bairros); } catch (error) { console.error('Erro ao carregar bairros:', error); alert('Não foi possível carregar as taxas dos bairros.'); } };
+    const loadBairros = async () => { try { const bairros = await fetchJSON(`${API_URL}/configuracoes/taxas`); renderBairros(bairros); } catch (error) { console.error('Erro ao carregar bairros:', error); } };
     const openEditModal = (id) => { const bairro = allBairros.find(b => b.id === id); if (bairro) { elements.bairroForm.reset(); elements.bairroIdInput.value = bairro.id; elements.bairroNomeInput.value = bairro.bairro; elements.bairroTaxaInput.value = bairro.taxa.toFixed(2); elements.bairroModalTitle.textContent = 'Editar Bairro'; elements.bairroModal.classList.remove('hidden'); } };
     const handleBairroFormSubmit = async (e) => { e.preventDefault(); const id = elements.bairroIdInput.value; const bairroData = { bairro: elements.bairroNomeInput.value, taxa: parseFloat(elements.bairroTaxaInput.value) }; const method = id ? 'PUT' : 'POST'; const url = id ? `${API_URL}/configuracoes/taxas/${id}` : `${API_URL}/configuracoes/taxas`; try { await fetchJSON(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bairroData) }); elements.bairroModal.classList.add('hidden'); loadBairros(); } catch (error) { alert(`Erro ao salvar bairro: ${error.message}`); } };
     const handleBairroDelete = async (id) => { if (confirm('Tem certeza que deseja excluir este bairro?')) { try { await fetchJSON(`${API_URL}/configuracoes/taxas/${id}`, { method: 'DELETE' }); loadBairros(); } catch (error) { alert(`Erro ao excluir bairro: ${error.message}`); } } };
 
-    // --- LÓGICA PARA USUÁRIOS (NOVO) ---
+    // --- LÓGICA PARA USUÁRIOS (Existente) ---
     const renderUsers = (users) => {
         elements.usersTbody.innerHTML = '';
         if (!users || users.length === 0) {
@@ -186,44 +232,102 @@
         }
         users.forEach(user => {
             const tr = document.createElement('tr');
-            const deleteButton = user.id === 1 
-                ? `<button class="action-btn delete-user-btn" data-id="${user.id}" disabled title="Não é possível excluir o admin principal">Excluir</button>`
-                : `<button class="action-btn delete-user-btn" data-id="${user.id}">Excluir</button>`;
-            tr.innerHTML = `
-                <td>${user.id}</td>
-                <td>${user.usuario}</td>
-                <td>${user.cargo}</td>
-                <td><div class="action-buttons">${deleteButton}</div></td>
-            `;
+            const deleteButton = user.id === 1 ? `<button class="action-btn delete-user-btn" data-id="${user.id}" disabled title="Não é possível excluir o admin principal">Excluir</button>` : `<button class="action-btn delete-user-btn" data-id="${user.id}">Excluir</button>`;
+            tr.innerHTML = `<td>${user.id}</td><td>${user.usuario}</td><td>${user.cargo}</td><td><div class="action-buttons">${deleteButton}</div></td>`;
             elements.usersTbody.appendChild(tr);
         });
     };
-    const loadUsers = async () => { try { const users = await fetchJSON(`${API_URL}/auth/users`); renderUsers(users); } catch (error) { console.error('Erro ao carregar usuários:', error); alert('Não foi possível carregar a lista de usuários.'); } };
+    const loadUsers = async () => { try { const users = await fetchJSON(`${API_URL}/auth/users`); renderUsers(users); } catch (error) { console.error('Erro ao carregar usuários:', error); } };
     const handleUserFormSubmit = async (e) => { e.preventDefault(); const userData = { usuario: elements.userUsuarioInput.value, senha: elements.userSenhaInput.value, cargo: elements.userCargoSelect.value }; if (userData.senha.length < 6) { alert('A senha deve ter no mínimo 6 caracteres.'); return; } try { await fetchJSON(`${API_URL}/auth/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData) }); elements.userModal.classList.add('hidden'); loadUsers(); } catch (error) { alert(`Erro ao salvar usuário: ${error.message}`); } };
     const handleUserDelete = async (id) => { if (confirm(`Tem certeza que deseja excluir o usuário com ID ${id}?`)) { try { await fetchJSON(`${API_URL}/auth/users/${id}`, { method: 'DELETE' }); loadUsers(); } catch (error) { alert(`Erro ao excluir usuário: ${error.message}`); } } };
+
+    // --- LÓGICA PARA UAIRANGO (NOVO) ---
+    const renderUairangoEstabelecimentos = (estabelecimentos) => {
+        elements.uairangoTbody.innerHTML = '';
+        if (!estabelecimentos || estabelecimentos.length === 0) {
+            elements.uairangoTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">Nenhum estabelecimento UaiRango configurado.</td></tr>';
+            return;
+        }
+        estabelecimentos.forEach(est => {
+            const tr = document.createElement('tr');
+            const isChecked = est.ativo ? 'checked' : '';
+            tr.innerHTML = `
+                <td>${est.nome_estabelecimento}</td>
+                <td>${est.id_estabelecimento}</td>
+                <td>
+                    <label class="switch">
+                        <input type="checkbox" class="toggle-uairango-btn" data-id="${est.id}" ${isChecked}>
+                        <span class="slider"></span>
+                    </label>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn delete-uairango-btn" data-id="${est.id}">Excluir</button>
+                    </div>
+                </td>
+            `;
+            elements.uairangoTbody.appendChild(tr);
+        });
+    };
+    const loadUairangoEstabelecimentos = async () => { try { const data = await fetchJSON(`${API_URL}/configuracoes/uairango`); renderUairangoEstabelecimentos(data); } catch (error) { console.error('Erro ao carregar estabelecimentos UaiRango:', error); }};
+    const handleUairangoFormSubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            nome_estabelecimento: elements.uairangoNomeInput.value,
+            id_estabelecimento: parseInt(elements.uairangoIdInput.value, 10),
+            token_developer: elements.uairangoTokenInput.value,
+        };
+        try {
+            await fetchJSON(`${API_URL}/configuracoes/uairango`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            elements.uairangoModal.classList.add('hidden');
+            loadUairangoEstabelecimentos();
+        } catch (error) {
+            alert(`Erro ao salvar estabelecimento: ${error.message}`);
+        }
+    };
+    const handleUairangoDelete = async (id) => { if (confirm('Tem certeza que deseja excluir esta configuração?')) { try { await fetchJSON(`${API_URL}/configuracoes/uairango/${id}`, { method: 'DELETE' }); loadUairangoEstabelecimentos(); } catch (error) { alert(`Erro ao excluir: ${error.message}`); } } };
+    const handleUairangoToggle = async (id, isChecked) => {
+        try {
+            await fetchJSON(`${API_URL}/configuracoes/uairango/${id}/toggle`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ativo: isChecked ? 1 : 0 }) });
+        } catch (error) {
+            alert(`Erro ao alterar status: ${error.message}`);
+            // Reverte o checkbox em caso de erro
+            loadUairangoEstabelecimentos();
+        }
+    };
 
     function setupEventListeners() {
         elements.logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
         
-        // Listeners de Bairros
         elements.addBairroBtn.addEventListener('click', () => { elements.bairroForm.reset(); elements.bairroIdInput.value = ''; elements.bairroModalTitle.textContent = 'Adicionar Novo Bairro'; elements.bairroModal.classList.remove('hidden'); });
         elements.closeBairroModalBtn.addEventListener('click', () => { elements.bairroModal.classList.add('hidden'); });
         elements.bairroModal.addEventListener('click', (e) => { if (e.target === elements.bairroModal) { elements.bairroModal.classList.add('hidden'); } });
         elements.bairroForm.addEventListener('submit', handleBairroFormSubmit);
-        elements.bairrosTbody.addEventListener('click', (e) => { const target = e.target; if (target.classList.contains('delete-btn')) { handleBairroDelete(parseInt(target.dataset.id, 10)); } if (target.classList.contains('edit-btn')) { openEditModal(parseInt(target.dataset.id, 10)); } });
+        elements.bairrosTbody.addEventListener('click', (e) => { const t = e.target; if (t.classList.contains('delete-btn')) handleBairroDelete(parseInt(t.dataset.id)); if (t.classList.contains('edit-btn')) openEditModal(parseInt(t.dataset.id)); });
 
-        // Listeners de Usuários
-        elements.addUserBtn.addEventListener('click', () => { elements.userForm.reset(); elements.userModalTitle.textContent = 'Adicionar Novo Usuário'; elements.userModal.classList.remove('hidden'); });
+        elements.addUserBtn.addEventListener('click', () => { elements.userForm.reset(); elements.userModal.classList.remove('hidden'); });
         elements.closeUserModalBtn.addEventListener('click', () => { elements.userModal.classList.add('hidden'); });
         elements.userModal.addEventListener('click', (e) => { if (e.target === elements.userModal) { elements.userModal.classList.add('hidden'); } });
         elements.userForm.addEventListener('submit', handleUserFormSubmit);
-        elements.usersTbody.addEventListener('click', (e) => { const target = e.target; if (target.classList.contains('delete-user-btn') && !target.disabled) { handleUserDelete(parseInt(target.dataset.id, 10)); } });
+        elements.usersTbody.addEventListener('click', (e) => { const t = e.target; if (t.classList.contains('delete-user-btn') && !t.disabled) handleUserDelete(parseInt(t.dataset.id)); });
+
+        // Listeners UaiRango
+        elements.addUairangoBtn.addEventListener('click', () => { elements.uairangoForm.reset(); elements.uairangoModal.classList.remove('hidden'); });
+        elements.closeUairangoModalBtn.addEventListener('click', () => { elements.uairangoModal.classList.add('hidden'); });
+        elements.uairangoModal.addEventListener('click', (e) => { if (e.target === elements.uairangoModal) { elements.uairangoModal.classList.add('hidden'); } });
+        elements.uairangoForm.addEventListener('submit', handleUairangoFormSubmit);
+        elements.uairangoTbody.addEventListener('click', (e) => {
+            const t = e.target;
+            if (t.classList.contains('delete-uairango-btn')) handleUairangoDelete(parseInt(t.dataset.id));
+            if (t.classList.contains('toggle-uairango-btn')) handleUairangoToggle(parseInt(t.dataset.id), t.checked);
+        });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners();
         loadBairros();
         loadUsers();
+        loadUairangoEstabelecimentos();
     });
   </script>
 

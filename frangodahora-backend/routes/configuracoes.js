@@ -69,6 +69,59 @@ router.delete('/taxas/:id', (req, res) => {
     });
 });
 
+// --- ROTAS PARA INTEGRAÇÃO UAIRANGO (NOVAS) ---
+
+// GET: Obter todos os estabelecimentos configurados
+router.get('/uairango', (req, res) => {
+    db.all("SELECT * FROM uairango_estabelecimentos ORDER BY nome_estabelecimento", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// POST: Adicionar um novo estabelecimento
+router.post('/uairango', (req, res) => {
+    const { id_estabelecimento, token_developer, nome_estabelecimento } = req.body;
+    if (!id_estabelecimento || !token_developer || !nome_estabelecimento) {
+        return res.status(400).json({ error: "Todos os campos são obrigatórios." });
+    }
+    const sql = `INSERT INTO uairango_estabelecimentos (id_estabelecimento, token_developer, nome_estabelecimento) VALUES (?, ?, ?)`;
+    db.run(sql, [id_estabelecimento, token_developer, nome_estabelecimento], function(err) {
+        if (err) {
+            if (err.message.includes('UNIQUE constraint failed')) {
+                return res.status(409).json({ error: 'Este ID de estabelecimento já está cadastrado.' });
+            }
+            return res.status(500).json({ error: err.message });
+        }
+        res.status(201).json({ id: this.lastID });
+    });
+});
+
+// PUT: Ativar/Desativar um estabelecimento
+router.put('/uairango/:id/toggle', (req, res) => {
+    const { id } = req.params;
+    const { ativo } = req.body;
+    if (ativo === undefined) {
+        return res.status(400).json({ error: "O status 'ativo' é obrigatório." });
+    }
+    const sql = `UPDATE uairango_estabelecimentos SET ativo = ? WHERE id = ?`;
+    db.run(sql, [ativo, id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: "Estabelecimento não encontrado." });
+        res.json({ message: 'Status do estabelecimento atualizado com sucesso!' });
+    });
+});
+
+// DELETE: Excluir um estabelecimento
+router.delete('/uairango/:id', (req, res) => {
+    const { id } = req.params;
+    db.run(`DELETE FROM uairango_estabelecimentos WHERE id = ?`, id, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: "Estabelecimento não encontrado." });
+        res.json({ message: 'Estabelecimento UaiRango removido com sucesso.' });
+    });
+});
+
 
 // --- ROTAS GENÉRICAS DE CONFIGURAÇÃO (JÁ EXISTENTES) ---
 
