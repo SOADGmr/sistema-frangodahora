@@ -6,6 +6,42 @@
   <title>Painel de Pedidos - Frango da Hora</title>
   <link rel="stylesheet" href="style.css" />
   <script src="auth.js"></script>
+  <style>
+    /* Estilos para destacar pedidos pendentes do UaiRango */
+    .status-row-pendente-uairango {
+        background-color: #ebf8ff; /* Azul bem claro */
+        border-left: 4px solid #4299e1; /* Borda azul */
+    }
+    .status-row-pendente-uairango td {
+        font-weight: 500;
+    }
+
+    .action-btn.accept-uairango-btn {
+        background-color: #48bb78;
+        border-color: #38a169;
+        color: white;
+        font-weight: 600;
+    }
+    .action-btn.accept-uairango-btn:hover {
+        background-color: #38a169;
+    }
+    .action-btn.reject-uairango-btn {
+        background-color: #f56565;
+        border-color: #e53e3e;
+        color: white;
+        font-weight: 600;
+    }
+     .action-btn.reject-uairango-btn:hover {
+        background-color: #e53e3e;
+    }
+
+    /* Ajuste para o status Pendente UaiRango */
+    .status-pendente-uairango {
+        background-color: #bee3f8;
+        color: #2b6cb0;
+    }
+
+  </style>
 </head>
 <body>
 
@@ -159,7 +195,7 @@
     let selectedDate = new Date();
     let bairrosConfig = [];
     let prazoUpdateInterval;
-    let estoqueAtual = 0; // NOVO: Variável para guardar o estoque
+    let estoqueAtual = 0;
 
     const elements = {
         pedidosTbody: document.getElementById('pedidosTbody'),
@@ -237,15 +273,14 @@
         return text ? JSON.parse(text) : { message: 'Operação bem-sucedida' }; 
     };
 
-    // ATUALIZADO: Agora armazena o estoque na variável global
     const fetchEstoque = async (dateString) => { 
         try { 
             const data = await fetchJSON(`${API_URL}/estoque?data=${dateString}`); 
-            estoqueAtual = data.quantidade_atual; // Armazena o valor
+            estoqueAtual = data.quantidade_atual;
             elements.estoqueDisplay.textContent = `Estoque: ${data.quantidade_atual} / ${data.quantidade_inicial}`; 
             elements.estoqueDisplay.style.color = data.quantidade_atual > 10 ? '#2f855a' : '#c53030'; 
         } catch (error) { 
-            estoqueAtual = 0; // Zera em caso de erro
+            estoqueAtual = 0;
             elements.estoqueDisplay.textContent = 'Erro ao carregar estoque'; 
         } 
     };
@@ -267,7 +302,6 @@
 
     const fetchPedidos = async (dateString) => { try { const pedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`); renderPedidos(pedidos); } catch (error) { elements.pedidosTbody.innerHTML = `<tr><td colspan="8">${error.message}</td></tr>`; } };
     
-    // ATUALIZADO: Agora o fetchEstoque é chamado aqui também
     const fetchDataForDate = (date) => { 
         const dateString = formatDateToYYYYMMDD(date); 
         updateDateDisplay(); 
@@ -301,6 +335,7 @@
         return `<span class="prazo ${classe}">${sinal}${hFormat}:${mFormat}</span>`;
     };
 
+    // FUNÇÃO ATUALIZADA para lidar com o novo status
     const renderPedidos = (pedidos) => {
         elements.pedidosTbody.innerHTML = '';
         if (pedidos.length === 0) {
@@ -309,17 +344,32 @@
         }
         pedidos.forEach(p => {
             const tr = document.createElement('tr');
-            tr.dataset.pedidoId = p.id; 
+            tr.dataset.pedidoId = p.id;
             tr.dataset.horarioPedido = p.horario_pedido;
             tr.dataset.tempoPrevisto = p.tempo_previsto;
-            const statusClass = p.status.toLowerCase().replace(' ', '-');
-            tr.className = `status-row-${statusClass}`;
+
+            const isUaiRangoPendente = p.canal_venda === 'UaiRango' && p.status === 'Pendente';
+            let statusDisplay = p.status;
+            let statusClass = p.status.toLowerCase().replace(/ /g, '-');
+            
+            if (isUaiRangoPendente) {
+                statusDisplay = 'Pendente UaiRango';
+                statusClass = 'pendente-uairango';
+                tr.className = 'status-row-pendente-uairango';
+            } else {
+                tr.className = `status-row-${statusClass}`;
+            }
+
             let actionButtonsHTML = '';
-            const isPendente = p.status === 'Pendente';
-            const isRetirada = p.cliente_endereco === 'Retirada';
             const totalFrangos = p.quantidade_frangos + (p.meio_frango ? 0.5 : 0);
-            if (isPendente) {
-                if (isRetirada) {
+
+            if (isUaiRangoPendente) {
+                actionButtonsHTML = `
+                    <button class="action-btn accept-uairango-btn" data-id="${p.id}">Aceitar</button>
+                    <button class="action-btn reject-uairango-btn" data-id="${p.id}">Rejeitar</button>
+                `;
+            } else if (p.status === 'Pendente') {
+                if (p.cliente_endereco === 'Retirada') {
                     actionButtonsHTML = `<button class="action-btn retirou-btn" data-id="${p.id}">Retirou</button>`;
                 } else {
                     actionButtonsHTML = `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Atribuir</button>`;
@@ -327,20 +377,25 @@
             } else if (p.status === 'Em Rota') {
                 actionButtonsHTML = `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Reatribuir</button>`;
             }
+
+            const isCancelado = p.status === 'Cancelado';
+            const isEntregue = p.status === 'Entregue';
+
             const prazoHtml = (p.status === 'Em Rota' || p.status === 'Pendente') ? calcularPrazo(p.horario_pedido, p.tempo_previsto) : '---';
+
             tr.innerHTML = `
-                <td>${p.id}</td>
+                <td>${p.uairango_id_pedido ? `<img src="https://www.uairango.com/assets/img/favicon/favicon-32x32.png" alt="UaiRango" style="width:16px; margin-right: 4px; vertical-align: middle;">${p.id}` : p.id}</td>
                 <td>${p.cliente_nome || 'N/A'}<br><small>${p.cliente_telefone || ''}</small></td>
                 <td>${p.cliente_endereco}<br><small>${p.cliente_bairro || ''}</small></td>
                 <td><div class="qty-display">${totalFrangos}</div></td>
                 <td>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</td>
                 <td class="prazo-cell">${prazoHtml}</td>
-                <td><span class="status status-${statusClass}">${p.status}</span></td>
+                <td><span class="status status-${statusClass}">${statusDisplay}</span></td>
                 <td>
                     <div class="action-buttons">
                         ${actionButtonsHTML}
-                        <button class="action-btn edit-btn" data-id="${p.id}" ${p.status === 'Cancelado' ? 'disabled' : ''}>Editar</button>
-                        <button class="action-btn cancel-btn" data-id="${p.id}" ${p.status === 'Cancelado' || p.status === 'Entregue' ? 'disabled' : ''}>Cancelar</button>
+                        <button class="action-btn edit-btn" data-id="${p.id}" ${isCancelado || isUaiRangoPendente ? 'disabled' : ''}>Editar</button>
+                        <button class="action-btn cancel-btn" data-id="${p.id}" ${isCancelado || isEntregue ? 'disabled' : ''}>Cancelar</button>
                     </div>
                 </td>`;
             elements.pedidosTbody.appendChild(tr);
@@ -353,7 +408,7 @@
         prazoUpdateInterval = setInterval(() => {
             document.querySelectorAll('#pedidosTbody tr[data-pedido-id]').forEach(tr => {
                 const statusSpan = tr.querySelector('.status');
-                if (statusSpan && (statusSpan.textContent === 'Em Rota' || statusSpan.textContent === 'Pendente')) {
+                if (statusSpan && (statusSpan.textContent.includes('Pendente') || statusSpan.textContent === 'Em Rota')) {
                     const prazoCell = tr.querySelector('.prazo-cell');
                     if (prazoCell) {
                         prazoCell.innerHTML = calcularPrazo(tr.dataset.horarioPedido, tr.dataset.tempoPrevisto);
@@ -457,7 +512,6 @@
         const id = elements.pedidoIdInput.value; 
         const isEditMode = !!id; 
         
-        // NOVO: Verificação de estoque antes de enviar
         const quantidadePedido = parseInt(document.getElementById('quantidade_frangos').value) + (document.getElementById('meio_frango').checked ? 0.5 : 0);
         if (!isEditMode && quantidadePedido > estoqueAtual) {
             elements.pedidoFormMessage.textContent = `Erro: Estoque insuficiente. Restam apenas ${estoqueAtual} frangos.`;
@@ -501,13 +555,44 @@
             elements.pedidoFormMessage.className = 'form-message error'; 
         } 
     };
+
+    const handleAcceptUaiRango = async (id) => {
+        try {
+            await fetchJSON(`${API_URL}/pedidos/uairango/${id}/aceitar`, { method: 'POST' });
+            alert('Pedido do UaiRango aceito!');
+            fetchDataForDate(selectedDate);
+        } catch (error) {
+            alert(`Erro ao aceitar pedido: ${error.message}`);
+        }
+    };
+
+    const handleRejectUaiRango = async (id) => {
+        const motivo = prompt('Por favor, digite o motivo para rejeitar o pedido:');
+        if (motivo) {
+            try {
+                await fetchJSON(`${API_URL}/pedidos/uairango/${id}/rejeitar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ motivo })
+                });
+                alert('Pedido do UaiRango rejeitado!');
+                fetchDataForDate(selectedDate);
+            } catch (error) {
+                alert(`Erro ao rejeitar pedido: ${error.message}`);
+            }
+        }
+    };
     
     const handleTableClick = async (e) => {
         const target = e.target;
         const id = target.dataset.id;
+        if (!id) return;
+
+        if (target.classList.contains('accept-uairango-btn')) { handleAcceptUaiRango(id); }
+        if (target.classList.contains('reject-uairango-btn')) { handleRejectUaiRango(id); }
         if (target.classList.contains('assign-btn')) { const qtd = parseFloat(target.dataset.qtd); openAssignModal(id, qtd); }
         if (target.classList.contains('edit-btn')) { if (target.disabled) return; try { const pedido = await fetchJSON(`${API_URL}/pedidos/${id}`); openPedidoModal('edit', pedido); } catch (error) { alert(`Erro ao carregar dados do pedido: ${error.message}`); } }
-        if (target.classList.contains('cancel-btn')) { if (confirm(`Tem certeza que deseja cancelar o pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/cancelar`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao cancelar pedido: ${error.message}`); } } }
+        if (target.classList.contains('cancel-btn')) { if (target.disabled) return; if (confirm(`Tem certeza que deseja cancelar o pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/cancelar`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao cancelar pedido: ${error.message}`); } } }
         if (target.classList.contains('retirou-btn')) { if (confirm(`Confirmar a retirada do pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/retirou`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao confirmar retirada: ${error.message}`); } } }
     };
 
@@ -533,7 +618,6 @@
     const changeDate = (days) => { selectedDate.setDate(selectedDate.getDate() + days); fetchDataForDate(selectedDate); };
 
     function setupEventListeners() {
-        // ATUALIZADO: Event listener do FAB com verificação de estoque
         elements.fab.addEventListener('click', () => {
             if (estoqueAtual <= 0) {
                 alert('Estoque esgotado! Não é possível criar novos pedidos. Por favor, atualize o estoque inicial do dia.');
@@ -578,8 +662,8 @@
     }
 
     function init() { 
-        populateSelect('canal_venda', ['Telefone', 'Porta']); 
-        populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago']); 
+        populateSelect('canal_venda', ['Telefone', 'Porta', 'UaiRango']); 
+        populateSelect('forma_pagamento', ['Dinheiro', 'Pix', 'Cartão', 'Pago', 'Outro']); 
         fetchDataForDate(selectedDate); 
         fetchSettings();
         fetchBairros();
@@ -590,3 +674,4 @@
 
 </body>
 </html>
+

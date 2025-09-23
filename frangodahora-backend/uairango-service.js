@@ -1,7 +1,7 @@
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { db } = require('./db');
 
-// CORREÇÃO: URL base da API ajustada para a correta
+// URL base da API do UaiRango
 const UAIRANGO_API_BASE_URL = 'https://www.uairango.com/api2';
 
 let pollingInterval;
@@ -15,7 +15,7 @@ async function getAuthToken(token_developer) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ token: token_developer }), // CORREÇÃO: O corpo da requisição espera a chave "token"
+            body: JSON.stringify({ token: token_developer }),
         });
         const data = await response.json();
         if (response.ok && data.token) {
@@ -71,7 +71,6 @@ async function getOrderDetails(cod_pedido, authToken) {
 // Função para salvar o pedido no nosso banco de dados local
 async function saveOrderLocally(orderDetails) {
     try {
-        // Envia para uma rota local que sabe como processar esses dados
         const response = await fetch('http://localhost:3000/api/pedidos/uairango', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -85,6 +84,59 @@ async function saveOrderLocally(orderDetails) {
         console.error(`[UaiRango Service] Exceção ao chamar a API local para salvar o pedido ${orderDetails.cod_pedido}:`, error.message);
     }
 }
+
+// NOVO: Função para aceitar um pedido na API do UaiRango
+async function acceptOrder(cod_pedido, token_developer) {
+    const authToken = await getAuthToken(token_developer);
+    if (!authToken) {
+        throw new Error('Falha na autenticação com UaiRango.');
+    }
+    try {
+        const response = await fetch(`${UAIRANGO_API_BASE_URL}/auth/pedido/confirma/${cod_pedido}`, {
+            method: 'POST',
+            headers: { 'Authorization': authToken },
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            console.log(`[UaiRango Service] Pedido ${cod_pedido} aceito com sucesso no UaiRango.`);
+            return true;
+        } else {
+            throw new Error(data.message || `Erro ao aceitar pedido ${cod_pedido} no UaiRango.`);
+        }
+    } catch (error) {
+        console.error(`[UaiRango Service] Exceção ao aceitar pedido ${cod_pedido}:`, error.message);
+        throw error;
+    }
+}
+
+// NOVO: Função para rejeitar um pedido na API do UaiRango
+async function rejectOrder(cod_pedido, token_developer, motivo) {
+    const authToken = await getAuthToken(token_developer);
+    if (!authToken) {
+        throw new Error('Falha na autenticação com UaiRango.');
+    }
+    try {
+        const response = await fetch(`${UAIRANGO_API_BASE_URL}/auth/pedido/cancela/${cod_pedido}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authToken,
+            },
+            body: JSON.stringify({ motivo }),
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            console.log(`[UaiRango Service] Pedido ${cod_pedido} rejeitado com sucesso no UaiRango.`);
+            return true;
+        } else {
+            throw new Error(data.message || `Erro ao rejeitar pedido ${cod_pedido} no UaiRango.`);
+        }
+    } catch (error) {
+        console.error(`[UaiRango Service] Exceção ao rejeitar pedido ${cod_pedido}:`, error.message);
+        throw error;
+    }
+}
+
 
 async function checkForNewOrders() {
     if (isPolling) return;
@@ -134,5 +186,4 @@ function stopPolling() {
     clearInterval(pollingInterval);
 }
 
-module.exports = { startPolling, stopPolling };
-
+module.exports = { startPolling, stopPolling, acceptOrder, rejectOrder };

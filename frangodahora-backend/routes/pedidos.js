@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db').db; // ATENÇÃO: Importar 'db' diretamente do objeto exportado
+const db = require('../db').db;
+const uairangoService = require('../uairango-service');
 
 // Rota para criar um novo pedido (manual ou pelo cliente)
 router.post('/', (req, res) => {
@@ -86,8 +87,8 @@ router.post('/uairango', (req, res) => {
         totalFrangos = produtos.reduce((acc, p) => acc + p.quantidade, 0);
         console.log(`[UaiRango Service] Nenhum produto com nome 'frango'. Assumindo ${totalFrangos} unidade(s) do produto principal.`);
     }
-
-    let formaPagamentoLocal = 'Outro';
+    
+    let formaPagamentoLocal = 'Pago'; 
     if (forma_pagamento) {
         const formaPagamentoLower = forma_pagamento.toLowerCase();
         if (formaPagamentoLower.includes('dinheiro')) formaPagamentoLocal = 'Dinheiro';
@@ -98,6 +99,7 @@ router.post('/uairango', (req, res) => {
 
     const isRetirada = tipo_entrega && tipo_entrega.toLowerCase() === 'retirada';
     
+    // CORREÇÃO: Status do pedido volta a ser 'Pendente' para ser compatível com a constraint do banco de dados.
     const sql = `
         INSERT INTO pedidos (
             uairango_id_pedido, cliente_nome, cliente_telefone, cliente_endereco, cliente_bairro,
@@ -137,7 +139,6 @@ router.post('/uairango', (req, res) => {
 
 // Rota para obter todos os pedidos de uma data específica
 router.get('/', (req, res) => {
-    // ... (código existente da rota, sem alterações)
     const data = req.query.data || new Date().toISOString().slice(0, 10);
     const sql = `
         SELECT p.*, m.nome as motoqueiro_nome 
@@ -145,11 +146,12 @@ router.get('/', (req, res) => {
         LEFT JOIN motoqueiros m ON p.motoqueiro_id = m.id
         WHERE date(p.horario_pedido) = ?
         ORDER BY 
-            CASE p.status
-                WHEN 'Pendente' THEN 1
-                WHEN 'Em Rota' THEN 2
-                WHEN 'Entregue' THEN 3
-                WHEN 'Cancelado' THEN 4
+            CASE 
+                WHEN p.canal_venda = 'UaiRango' AND p.status = 'Pendente' THEN 0
+                WHEN p.status = 'Pendente' THEN 1
+                WHEN p.status = 'Em Rota' THEN 2
+                WHEN p.status = 'Entregue' THEN 3
+                WHEN p.status = 'Cancelado' THEN 4
                 ELSE 5
             END,
             id DESC
@@ -163,8 +165,78 @@ router.get('/', (req, res) => {
     });
 });
 
-// ... (Restante do arquivo `pedidos.js` permanece o mesmo) ...
-// Rota para obter um pedido específico
+const findEstabelecimentoByPedido = () => {
+    return new Promise((resolve, reject) => {
+        db.get(`SELECT id_estabelecimento, token_developer FROM uairango_estabelecimentos WHERE ativo = 1 LIMIT 1`, [], (err, row) => {
+            if (err) return reject(new Error('Erro ao buscar credenciais do estabelecimento.'));
+            if (!row) return reject(new Error('Nenhum estabelecimento UaiRango ativo encontrado para processar a ação.'));
+            resolve(row);
+        });
+    });
+};
+
+router.post('/uairango/:id/aceitar', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pedido = await new Promise((resolve, reject) => {
+            db.get("SELECT uairango_id_pedido FROM pedidos WHERE id = ?", [id], (err, row) => {
+                if (err) return reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!pedido || !pedido.uairango_id_pedido) {
+            return res.status(404).json({ error: 'Pedido local ou ID UaiRango não encontrado.' });
+        }
+
+        const est = await findEstabelecimentoByPedido();
+        
+        await uairangoService.acceptOrder(pedido.uairango_id_pedido, est.token_developer);
+
+        db.run("UPDATE pedidos SET status = 'Pendente' WHERE id = ?", [id], function(err) {
+            if (err) return res.status(500).json({ error: 'Erro ao atualizar status do pedido local.' });
+            res.json({ message: 'Pedido aceito com sucesso!' });
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/uairango/:id/rejeitar', async (req, res) => {
+    const { id } = req.params;
+    const { motivo } = req.body;
+
+    if (!motivo) {
+        return res.status(400).json({ error: 'O motivo da rejeição é obrigatório.' });
+    }
+
+    try {
+        const pedido = await new Promise((resolve, reject) => {
+            db.get("SELECT uairango_id_pedido FROM pedidos WHERE id = ?", [id], (err, row) => {
+                if (err) return reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!pedido || !pedido.uairango_id_pedido) {
+            return res.status(404).json({ error: 'Pedido local ou ID UaiRango não encontrado.' });
+        }
+        
+        const est = await findEstabelecimentoByPedido();
+
+        await uairangoService.rejectOrder(pedido.uairango_id_pedido, est.token_developer, motivo);
+
+        db.run("UPDATE pedidos SET status = 'Cancelado' WHERE id = ?", [id], function(err) {
+            if (err) return res.status(500).json({ error: 'Erro ao atualizar status do pedido local.' });
+            res.json({ message: 'Pedido rejeitado com sucesso!' });
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/:id', (req, res) => {
     const { id } = req.params;
     db.get("SELECT * FROM pedidos WHERE id = ?", [id], (err, row) => {
@@ -174,7 +246,6 @@ router.get('/:id', (req, res) => {
     });
 });
 
-// Rota para atualizar um pedido
 router.put('/:id', (req, res) => {
     const { id } = req.params;
     const {
@@ -192,7 +263,6 @@ router.put('/:id', (req, res) => {
     });
 });
 
-// Rota para atribuir um motoqueiro
 router.put('/:id/atribuir', (req, res) => {
     const pedidoIdNum = parseInt(req.params.id, 10);
     const motoqueiroIdNum = parseInt(req.body.motoqueiroId, 10);
@@ -236,7 +306,6 @@ router.put('/:id/atribuir', (req, res) => {
     });
 });
 
-// Rota para marcar como entregue
 router.put('/:id/entregar', (req, res) => {
     db.run("UPDATE pedidos SET status = 'Entregue' WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -244,7 +313,6 @@ router.put('/:id/entregar', (req, res) => {
     });
 });
 
-// Rota para marcar como retirado
 router.put('/:id/retirou', (req, res) => {
     db.run("UPDATE pedidos SET status = 'Entregue' WHERE id = ? AND cliente_endereco = 'Retirada'", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -252,7 +320,6 @@ router.put('/:id/retirou', (req, res) => {
     });
 });
 
-// Rota para cancelar pedido
 router.put('/:id/cancelar', (req, res) => {
     db.run("UPDATE pedidos SET status = 'Cancelado', motoqueiro_id = NULL, rota_ordem = 0 WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -260,7 +327,6 @@ router.put('/:id/cancelar', (req, res) => {
     });
 });
 
-// Rota para ordenar a rota de entrega
 router.put('/ordenar-rota', (req, res) => {
     const { ordem, motoqueiroId } = req.body;
 
