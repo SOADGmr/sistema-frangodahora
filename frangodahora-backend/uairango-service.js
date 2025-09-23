@@ -85,7 +85,7 @@ async function saveOrderLocally(orderDetails) {
     }
 }
 
-// NOVO: Função para aceitar um pedido na API do UaiRango
+// Função para aceitar um pedido na API do UaiRango
 async function acceptOrder(cod_pedido, token_developer) {
     const authToken = await getAuthToken(token_developer);
     if (!authToken) {
@@ -109,7 +109,7 @@ async function acceptOrder(cod_pedido, token_developer) {
     }
 }
 
-// NOVO: Função para rejeitar um pedido na API do UaiRango
+// Função para rejeitar um pedido na API do UaiRango
 async function rejectOrder(cod_pedido, token_developer, motivo) {
     const authToken = await getAuthToken(token_developer);
     if (!authToken) {
@@ -134,6 +134,116 @@ async function rejectOrder(cod_pedido, token_developer, motivo) {
     } catch (error) {
         console.error(`[UaiRango Service] Exceção ao rejeitar pedido ${cod_pedido}:`, error.message);
         throw error;
+    }
+}
+
+// NOVO: Função para buscar os prazos disponíveis na API do UaiRango
+async function getAvailableTimes(authToken) {
+    try {
+        const response = await fetch(`${UAIRANGO_API_BASE_URL}/auth/info/prazos`, {
+            headers: { 'Authorization': authToken },
+        });
+        const data = await response.json();
+        if (response.ok && Array.isArray(data)) {
+            return data;
+        } else {
+            console.error(`[UaiRango Service] Erro ao buscar prazos: ${data.message || 'Resposta inválida'}`);
+            return [];
+        }
+    } catch (error) {
+        console.error('[UaiRango Service] Exceção ao buscar prazos:', error.message);
+        return [];
+    }
+}
+
+// ATUALIZADO: Função para encontrar o ID do prazo com a lógica aprimorada
+function findBestTimeId(targetTime, availableTimes) {
+    if (!availableTimes || availableTimes.length === 0) return null;
+
+    // 1. Filtra apenas os tempos ativos e calcula a média de cada um
+    const activeTimes = availableTimes
+        .filter(t => t.status === 1)
+        .map(t => ({
+            ...t,
+            avg: (t.min + t.max) / 2
+        }));
+
+    if (activeTimes.length === 0) {
+        console.warn('[UaiRango Service] Nenhum prazo de entrega/retirada ativo encontrado na API do UaiRango.');
+        return null;
+    }
+
+    let bestMatch = null;
+    let smallestDiff = Infinity;
+
+    // 2. Itera para encontrar a melhor correspondência
+    for (const time of activeTimes) {
+        const diff = Math.abs(targetTime - time.avg);
+
+        if (diff < smallestDiff) {
+            smallestDiff = diff;
+            bestMatch = time;
+        } else if (diff === smallestDiff) {
+            // 3. Regra de desempate: se a diferença for a mesma, prefere o tempo médio maior.
+            if (bestMatch && time.avg > bestMatch.avg) {
+                bestMatch = time;
+            }
+        }
+    }
+    
+    if (bestMatch) {
+         console.log(`[UaiRango Service] Para o tempo de ${targetTime} min, o melhor intervalo encontrado foi ${bestMatch.min}-${bestMatch.max} min (média: ${bestMatch.avg}). ID: ${bestMatch.id_tempo}`);
+    }
+
+    return bestMatch ? bestMatch.id_tempo : null;
+}
+
+// NOVO: Função para atualizar o tempo de entrega/retirada no UaiRango
+async function updateUaiRangoTime(id_estabelecimento, token_developer, campo, tempoEmMinutos) {
+    console.log(`[UaiRango Service] Iniciando atualização de tempo para ${campo} do estabelecimento ${id_estabelecimento} para ${tempoEmMinutos} minutos.`);
+    const authToken = await getAuthToken(token_developer);
+    if (!authToken) {
+        console.error(`[UaiRango Service] Falha ao obter token para o estabelecimento ${id_estabelecimento}. Abortando atualização de tempo.`);
+        return;
+    }
+    
+    const availableTimes = await getAvailableTimes(authToken);
+    const timeId = findBestTimeId(tempoEmMinutos, availableTimes);
+
+    // Se um ID correspondente for encontrado, usa a nova rota
+    if (timeId) {
+        try {
+            const response = await fetch(`${UAIRANGO_API_BASE_URL}/auth/info/${id_estabelecimento}/${campo}/${timeId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': authToken },
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                console.log(`[UaiRango Service] Tempo (${campo}) do est. ${id_estabelecimento} atualizado com sucesso para o ID ${timeId} (~${tempoEmMinutos} min).`);
+            } else {
+                console.error(`[UaiRango Service] Erro ao atualizar tempo (${campo}) para ${id_estabelecimento}: ${data.message || 'Erro desconhecido'}`);
+            }
+        } catch (error) {
+            console.error(`[UaiRango Service] Exceção ao atualizar tempo (${campo}) para ${id_estabelecimento}:`, error.message);
+        }
+    } else {
+        // Se não, tenta usar a rota antiga como fallback
+        console.warn(`[UaiRango Service] Não foi possível encontrar um ID de tempo correspondente para ${tempoEmMinutos} minutos. Usando a rota antiga como fallback.`);
+        const campoAntigo = campo === 'id_tempo_delivery' ? 'prazo_delivery' : 'prazo_retirada';
+        try {
+            const response = await fetch(`${UAIRANGO_API_BASE_URL}/auth/info/${id_estabelecimento}/${campoAntigo}/${tempoEmMinutos}`, {
+                method: 'PUT',
+                headers: { 'Authorization': authToken },
+            });
+            const data = await response.json();
+             if (response.ok && data.success) {
+                console.log(`[UaiRango Service] Tempo (${campoAntigo}) do est. ${id_estabelecimento} atualizado com sucesso para ${tempoEmMinutos} minutos via rota antiga.`);
+            } else {
+                console.error(`[UaiRango Service] Erro ao atualizar tempo (${campoAntigo}) via rota antiga para ${id_estabelecimento}: ${data.message || 'Erro desconhecido'}`);
+            }
+        } catch (error) {
+            console.error(`[UaiRango Service] Exceção ao atualizar tempo (${campoAntigo}) via rota antiga para ${id_estabelecimento}:`, error.message);
+        }
     }
 }
 
@@ -186,4 +296,5 @@ function stopPolling() {
     clearInterval(pollingInterval);
 }
 
-module.exports = { startPolling, stopPolling, acceptOrder, rejectOrder };
+module.exports = { startPolling, stopPolling, acceptOrder, rejectOrder, updateUaiRangoTime };
+

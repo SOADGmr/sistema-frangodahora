@@ -1,0 +1,18 @@
+* [33m6063efa[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m feat(uairango): Implementa aceitação e rejeição de pedidos via painel
+* [33m9c82386[m feat(UaiRango): Implementa importação de pedidos e corrige inicialização do backend
+* [33mfe10708[m Estrutura inicial para API UaiRango
+* [33mc459dac[m Concertado erros de estoque, agora cliente e painel nao criarao mais pedidos sem estoque
+* [33m1346b58[m Correção Tela do entregador com login duplicado
+* [33m7e4123f[m Algumas correções no visual do modal motoqueiro
+* [33m4269925[m Correção layout entregas ok modal motoqueiros
+* [33m25fe094[m Correção layout modal motoqueiro.html
+* [33m635e174[m Criação da página do cliente
+* [33m9ad0f81[m Novo gerenciamento de usuários pela tela de configurações. Exluir, Criar, Editar
+* [33md6e6bec[m Bloqueio de usuarios sem permissao em certas pagina
+* [33m5512598[m Adição do sistema de Login Puro
+* [33me83d895[m Adição do calculo de prazo de entrega
+* [33mbecf8c4[m Correção info-header layout estava quebrando linha
+* [33mf60f606[m feat: Adiciona configs de tempo, edição de taxas e corrige bugs
+* [33m6fd3eab[m Adição Tela de Configurac
+* [33m0b8ad17[m Adição Tela de Configurações
+* [33m5251f65[m feat: Estrutura inicial do projeto com backend e frontend

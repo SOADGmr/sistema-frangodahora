@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../db'); // CORREÇÃO APLICADA
+const { db } = require('../db');
+const uairangoService = require('../uairango-service'); // Importa o serviço do UaiRango
 
 // --- ROTAS PARA TAXAS DE BAIRRO ---
 
@@ -123,7 +124,7 @@ router.delete('/uairango/:id', (req, res) => {
 });
 
 
-// --- ROTAS GENÉRICAS DE CONFIGURAÇÃO (JÁ EXISTENTES) ---
+// --- ROTAS GENÉRICAS DE CONFIGURAÇÃO (ATUALIZADAS) ---
 
 router.get('/:chave', (req, res) => {
   const { chave } = req.params;
@@ -138,15 +139,51 @@ router.put('/:chave', (req, res) => {
   const { chave } = req.params;
   const { valor } = req.body;
   if (valor === undefined) return res.status(400).json({ error: 'O campo "valor" é obrigatório.' });
+
+  // 1. Salva a configuração localmente
   db.run('UPDATE configuracoes SET valor = ? WHERE chave = ?', [valor, chave], function(err) {
     if (err) return res.status(500).json({ error: err.message });
-    if (this.changes === 0) {
-        db.run('INSERT INTO configuracoes (chave, valor) VALUES (?, ?)', [chave, valor], function(err) {
-            if (err) return res.status(500).json({ error: err.message });
+    
+    let wasCreated = this.changes === 0;
+
+    const completeRequest = () => {
+        // 2. Se a chave for de tempo, atualiza no UaiRango (fire-and-forget)
+        if (chave === 'tempo_entrega' || chave === 'tempo_retirada') {
+            const campoUaiRango = chave === 'tempo_entrega' ? 'id_tempo_delivery' : 'id_tempo_retirada';
+            const tempoEmMinutos = parseInt(valor, 10);
+            
+            db.all(`SELECT id_estabelecimento, token_developer FROM uairango_estabelecimentos WHERE ativo = 1`, [], (err, estabelecimentos) => {
+                if (err) {
+                    console.error("[Config Route] Erro ao buscar estabelecimentos UaiRango para atualização de tempo:", err.message);
+                } else if (estabelecimentos && estabelecimentos.length > 0) {
+                    console.log(`[Config Route] Disparando atualização de tempo para ${estabelecimentos.length} estabelecimento(s) UaiRango.`);
+                    for (const est of estabelecimentos) {
+                        uairangoService.updateUaiRangoTime(
+                            est.id_estabelecimento,
+                            est.token_developer,
+                            campoUaiRango,
+                            tempoEmMinutos
+                        );
+                    }
+                }
+            });
+        }
+
+        // 3. Responde ao cliente
+        if (wasCreated) {
             res.status(201).json({ message: 'Configuração criada com sucesso.' });
+        } else {
+            res.json({ message: 'Configuração atualizada com sucesso.' });
+        }
+    };
+
+    if (wasCreated) {
+        db.run('INSERT INTO configuracoes (chave, valor) VALUES (?, ?)', [chave, valor], function(insertErr) {
+            if (insertErr) return res.status(500).json({ error: insertErr.message });
+            completeRequest();
         });
     } else {
-        res.json({ message: 'Configuração atualizada com sucesso.' });
+        completeRequest();
     }
   });
 });
