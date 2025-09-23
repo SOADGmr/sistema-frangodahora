@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../db').db; // ATENÇÃO: Importar 'db' diretamente do objeto exportado
 
-// Rota para criar um novo pedido (COM VERIFICAÇÃO DE ESTOQUE CORRIGIDA)
+// Rota para criar um novo pedido (manual ou pelo cliente)
 router.post('/', (req, res) => {
     const {
         cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone,
@@ -12,7 +12,6 @@ router.post('/', (req, res) => {
 
     const quantidadePedido = Number(quantidade_frangos) + (meio_frango ? 0.5 : 0);
     
-    // Usa a data local do servidor para a verificação, garantindo consistência.
     const serverLocalDate = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
     Promise.all([
@@ -23,7 +22,6 @@ router.post('/', (req, res) => {
             });
         }),
         new Promise((resolve, reject) => {
-            // CORRIGIDO: Removido o 'localtime' para evitar cálculo duplo de fuso horário.
             db.get(`SELECT SUM(quantidade_frangos + (meio_frango * 0.5)) AS total_vendido FROM pedidos WHERE status != 'Cancelado' AND date(horario_pedido) = ?`, [serverLocalDate], (err, row) => {
                 if (err) return reject(err);
                 resolve(row && row.total_vendido ? row.total_vendido : 0);
@@ -66,8 +64,80 @@ router.post('/', (req, res) => {
     }
 });
 
+// Rota para receber e salvar um pedido vindo do UaiRango
+router.post('/uairango', (req, res) => {
+    const uairangoOrder = req.body;
+
+    const {
+        cod_pedido, valor_total, observacao, prazo_max, forma_pagamento,
+        tipo_entrega, taxa_entrega, usuario, endereco, produtos
+    } = uairangoOrder;
+
+    let totalFrangos = 0;
+    if (produtos && Array.isArray(produtos)) {
+        produtos.forEach(produto => {
+            const nomeProduto = produto.produto.toLowerCase();
+            if (nomeProduto.includes('frango')) {
+                totalFrangos += produto.quantidade;
+            }
+        });
+    }
+    if (totalFrangos === 0 && produtos && produtos.length > 0) {
+        totalFrangos = produtos.reduce((acc, p) => acc + p.quantidade, 0);
+        console.log(`[UaiRango Service] Nenhum produto com nome 'frango'. Assumindo ${totalFrangos} unidade(s) do produto principal.`);
+    }
+
+    let formaPagamentoLocal = 'Outro';
+    if (forma_pagamento) {
+        const formaPagamentoLower = forma_pagamento.toLowerCase();
+        if (formaPagamentoLower.includes('dinheiro')) formaPagamentoLocal = 'Dinheiro';
+        else if (formaPagamentoLower.includes('pix')) formaPagamentoLocal = 'Pix';
+        else if (formaPagamentoLower.includes('cartão') || formaPagamentoLower.includes('cartao')) formaPagamentoLocal = 'Cartão';
+        else if (formaPagamentoLower.includes('online')) formaPagamentoLocal = 'Pago';
+    }
+
+    const isRetirada = tipo_entrega && tipo_entrega.toLowerCase() === 'retirada';
+    
+    const sql = `
+        INSERT INTO pedidos (
+            uairango_id_pedido, cliente_nome, cliente_telefone, cliente_endereco, cliente_bairro,
+            quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento,
+            canal_venda, status, horario_pedido, picado, observacao, tempo_previsto
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UaiRango', 'Pendente', datetime('now', 'localtime'), ?, ?, ?)
+        ON CONFLICT(uairango_id_pedido) DO NOTHING
+    `;
+
+    const params = [
+        cod_pedido,
+        usuario ? usuario.nome : 'N/A',
+        (usuario && usuario.tel1) ? usuario.tel1.replace(/\D/g, '') : 'N/A',
+        isRetirada ? 'Retirada' : `${endereco.rua}, ${endereco.num} ${endereco.complemento || ''}`.trim(),
+        isRetirada ? '' : endereco.bairro,
+        Math.floor(totalFrangos),
+        (totalFrangos % 1 !== 0) ? 1 : 0,
+        taxa_entrega || 0,
+        valor_total,
+        formaPagamentoLocal,
+        0, // picado (padrão)
+        observacao,
+        prazo_max
+    ];
+
+    db.run(sql, params, function(err) {
+        if (err) {
+            console.error("[UaiRango Service] Erro ao salvar pedido no banco de dados:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        if (this.changes > 0) {
+            console.log(`[UaiRango Service] Pedido ${cod_pedido} importado com sucesso.`);
+        }
+        res.status(200).json({ message: 'Pedido processado.' });
+    });
+});
+
 // Rota para obter todos os pedidos de uma data específica
 router.get('/', (req, res) => {
+    // ... (código existente da rota, sem alterações)
     const data = req.query.data || new Date().toISOString().slice(0, 10);
     const sql = `
         SELECT p.*, m.nome as motoqueiro_nome 
@@ -82,7 +152,7 @@ router.get('/', (req, res) => {
                 WHEN 'Cancelado' THEN 4
                 ELSE 5
             END,
-            p.id DESC
+            id DESC
     `;
     db.all(sql, [data], (err, rows) => {
         if (err) {
@@ -93,6 +163,7 @@ router.get('/', (req, res) => {
     });
 });
 
+// ... (Restante do arquivo `pedidos.js` permanece o mesmo) ...
 // Rota para obter um pedido específico
 router.get('/:id', (req, res) => {
     const { id } = req.params;
@@ -223,3 +294,4 @@ router.put('/ordenar-rota', (req, res) => {
 });
 
 module.exports = router;
+

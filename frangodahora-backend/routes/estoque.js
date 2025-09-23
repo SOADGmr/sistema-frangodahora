@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const { db } = require('../db'); // CORREÇÃO APLICADA
 
 // ROTA GET ATUALIZADA para buscar estoque por data
 router.get('/', (req, res) => {
