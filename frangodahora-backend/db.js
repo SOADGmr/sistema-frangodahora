@@ -58,6 +58,9 @@ function initializeDatabase(callback) {
                 db.run(`INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('preco_frango', '50.00')`);
                 db.run(`INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('tempo_entrega', '60')`);
                 db.run(`INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('tempo_retirada', '30')`);
+                // NOVO: Adiciona as configurações de automação do UaiRango
+                db.run(`INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('uairango_auto_close', '1')`);
+                db.run(`INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('uairango_auto_reject', '1')`);
 
                 console.log("Banco de dados pronto para uso.");
                 if (callback) callback();
