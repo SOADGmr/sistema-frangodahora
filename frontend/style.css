@@ -1,4 +1,6 @@
-/* Reset Básico e Fonte Padrão */
+/* ====================================================== */
+/* 1. RESET BÁSICO E ESTILOS GLOBAIS                      */
+/* ====================================================== */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -19,317 +21,190 @@ body {
 }
 
 main {
-  flex: 1; 
+  flex: 1;
   padding: 1.5rem 2rem;
   overflow-y: auto; /* Permite rolagem no conteúdo principal quando necessário */
+  min-height: 0;
 }
 
-/* Classe para esconder elementos */
-.hidden {
-    display: none !important;
-}
+h1, h2 { color: #2d3748; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.5rem; }
 
-/* Header e Navegação */
+.hidden { display: none !important; }
+
+/* ====================================================== */
+/* 2. COMPONENTES GERAIS (HEADER, BOTÕES, ETC)            */
+/* ====================================================== */
+
+/* --- Header e Navegação --- */
 header {
   background-color: #fff;
   padding: 1rem 2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
 }
+nav { display: flex; gap: 1rem; flex-wrap: wrap; }
+nav a { text-decoration: none; color: #4a5568; font-weight: 600; padding: 0.5rem 1rem; border-radius: 8px; transition: all 0.2s ease-in-out; border-bottom: 2px solid transparent; }
+nav a:hover { background-color: #edf2f7; color: #2d3748; }
+nav a.active { color: #4299e1; border-bottom: 2px solid #4299e1; }
+.info-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+header:not(:has(nav)) .info-header { border-top: none; margin-top: 0; padding-top: 0; }
 
-nav {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
+/* --- Controles do Header --- */
+.header-actions { display: flex; gap: 0.75rem; align-items: flex-end; }
+.estoque-container { display: flex; align-items: center; gap: 1rem; }
+#estoque-display { font-size: 1.25rem; font-weight: 600; padding: 0.5rem 1rem; border-radius: 8px; background-color: #e2e8f0; }
+.price-config, .time-config { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.4rem 0.5rem; border-radius: 8px; background-color: #edf2f7; }
+.price-config label, .time-config label { font-weight: 600; font-size: 0.75rem; color: #4a5568; margin-bottom: 0; }
+.price-config input, .time-config input { width: 80px; padding: 0.4rem; font-size: 1rem; font-weight: bold; text-align: center; border: 1px solid #cbd5e0; border-radius: 6px; }
+.action-btn-header { padding: 0.75rem 1rem; border: none; border-radius: 8px; background-color: #48bb78; color: white; cursor: pointer; font-weight: 600; transition: background-color 0.2s; height: 55px; align-self: flex-end; }
+.action-btn-header:hover { background-color: #38a169; }
+.date-navigator { display: flex; align-items: center; gap: 0.75rem; justify-content: center; }
+.date-nav-btn { background-color: #e2e8f0; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.5rem; font-weight: bold; cursor: pointer; color: #4a5568; line-height: 40px; }
+.date-nav-btn:hover { background-color: #cbd5e0; }
+#current-date-display { font-size: 1.25rem; font-weight: 600; color: #2d3748; min-width: 100px; text-align: center; }
+.fab { position: fixed; bottom: 30px; right: 30px; width: 150px; height: 60px; background-color: #4299e1; color: white; border: none; border-radius: 30px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); font-size: 1.1rem; font-weight: 600; cursor: pointer; z-index: 999; }
+.fab:hover { background-color: #3182ce; transform: translateY(-2px); }
 
-nav a {
-  text-decoration: none;
-  color: #4a5568;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: all 0.2s ease-in-out;
-  border-bottom: 2px solid transparent;
-}
+/* --- Estilos Gerais de Tabela --- */
+.table-wrapper { overflow: auto; flex-grow: 1; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; vertical-align: middle; white-space: nowrap; }
+th { background-color: #f7fafc; font-weight: 600; color: #4a5568; position: sticky; top: 0; z-index: 1; font-size: 0.8rem; text-transform: uppercase; }
+tbody tr:hover { background-color: #f7fafc; }
 
-nav a:hover {
-  background-color: #edf2f7;
-  color: #2d3748;
-}
-
-nav a.active {
-  color: #4299e1;
-  border-bottom: 2px solid #4299e1;
-}
-
-.info-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
-  margin-top: 1rem;
-}
-/* Remove a borda e margin se a navegação não estiver presente (como na config) */
-header:not(:has(nav)) .info-header {
-    border-top: none;
-    margin-top: 0;
-    padding-top: 0;
-}
-
-
-h1, h2 {
-  color: #2d3748;
-}
-h1 { font-size: 1.75rem; }
-h2 { font-size: 1.5rem; }
-
-.header-actions {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-end;
-}
-
-.estoque-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-#estoque-display {
-  font-size: 1.25rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  background-color: #e2e8f0;
-}
-
-.price-config, .time-config {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.4rem 0.5rem;
-    border-radius: 8px;
-    background-color: #edf2f7;
-}
-.price-config label, .time-config label {
-    font-weight: 600;
-    font-size: 0.75rem;
-    color: #4a5568;
-    margin-bottom: 0;
-}
-.price-config input, .time-config input {
-    width: 80px;
-    padding: 0.4rem;
-    font-size: 1rem;
-    font-weight: bold;
-    text-align: center;
-    border: 1px solid #cbd5e0;
-    border-radius: 6px;
-}
-.action-btn-header {
-    padding: 0.75rem 1rem;
-    border: none;
-    border-radius: 8px;
-    background-color: #48bb78;
-    color: white;
-    cursor: pointer;
-    font-weight: 600;
-    transition: background-color 0.2s;
-    height: 55px;
-    align-self: flex-end;
-}
-.action-btn-header:hover {
-    background-color: #38a169;
-}
-
-.date-navigator {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    justify-content: center;
-}
-.date-nav-btn {
-    background-color: #e2e8f0;
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    color: #4a5568;
-    line-height: 40px;
-}
-.date-nav-btn:hover {
-    background-color: #cbd5e0;
-}
-#current-date-display {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #2d3748;
-    min-width: 100px;
-    text-align: center;
-}
-
-/* Container principal das páginas (Pedidos, Motoqueiros) */
-.pedidos-container, .page-container {
-  background-color: #fff;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  min-height: 0;
-}
-
-.table-wrapper {
-  overflow: auto; /* Para rolagem vertical e horizontal */
-  flex-grow: 1;
-}
-
-#pedidosTable {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-#pedidosTable th, #pedidosTable td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e2e8f0;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-#pedidosTable th {
-  background-color: #f7fafc;
-  font-weight: 600;
-  color: #4a5568;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-}
-
-#pedidosTable tbody tr:hover {
-  background-color: #f7fafc;
-}
-
-#pedidosTable td {
-    font-size: 0.9rem;
-}
-#pedidosTable td small {
-    font-size: 0.8rem;
-    color: #718096;
-}
-
-tr.status-row-cancelado {
-    background-color: #fef2f2;
-    color: #9ca3af;
-    text-decoration: line-through;
-}
-
-.status {
-  padding: 0.25rem 0.6rem;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.status-pendente { background-color: #fefcbf; color: #9f580a; }
-.status-em-rota { background-color: #e9d8a6; color: #947703; }
-.status-entregue { background-color: #c6f6d5; color: #2f855a; }
-.status-cancelado { background-color: #fed7d7; color: #9b2c2c; }
-
-.prazo { font-weight: bold; font-size: 1rem; }
-.prazo-ok { color: #2f855a; }
-.prazo-atrasado { color: #c53030; }
-
+/* --- Estilos Gerais de Botões de Ação em Tabelas --- */
 td .action-buttons { display: flex; gap: 0.5rem; }
 .action-btn { padding: 0.4rem 0.8rem; border: 1px solid #cbd5e0; border-radius: 6px; background-color: #fff; cursor: pointer; font-weight: 500; transition: all 0.2s; font-size: 0.85rem;}
 .action-btn:hover { background-color: #edf2f7; border-color: #a0aec0; }
-.action-btn.cancel-btn:hover { background-color: #fed7d7; border-color: #fca5a5; }
 .action-btn:disabled { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
-.action-btn.retirou-btn, .action-btn.assign-btn { background-color: #c6f6d5; border-color: #9ae6b4; color: #2f855a; font-weight: 600; }
-.action-btn.retirou-btn:hover, .action-btn.assign-btn:hover { background-color: #9ae6b4; }
-.action-btn.view-btn { background-color: #48bb78; color: white; border-color: #38a169; font-weight: 600; }
-.action-btn.view-btn:hover { background-color: #38a169; }
 
 
-.qty-display {
-    background-color: #4299e1;
-    color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+/* ====================================================== */
+/* 3. MODAIS E COMPONENTES FLUTUANTES                     */
+/* ====================================================== */
+
+/* --- Base para todos os modais --- */
+.modal-container, .management-modal-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
     display: flex;
-    align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
-    font-weight: bold;
+    align-items: center;
+    padding: 1rem;
+    z-index: 1000;
 }
 
-/* --- ESTILOS DO MODAL E BOTÃO FLUTUANTE --- */
-.fab { position: fixed; bottom: 30px; right: 30px; width: 150px; height: 60px; background-color: #4299e1; color: white; border: none; border-radius: 30px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); font-size: 1.1rem; font-weight: 600; cursor: pointer; z-index: 999; transition: background-color 0.3s, transform 0.2s; }
-.fab:hover { background-color: #3182ce; transform: translateY(-2px); }
-
-.modal-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1001; padding: 1rem; }
-.form-container { background-color: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); position: relative; max-width: 800px; width: 100%; max-height: 90vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
-.form-header { padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
-.form-body { padding: 1rem 2rem; overflow-y: auto; flex-grow: 1; }
-.form-footer { padding: 1.5rem 2rem; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
-#assign-modal-container .form-container { max-width: 400px; padding: 2rem; display: block; overflow: visible; }
-.close-btn { position: static; font-size: 2.5rem; color: #aaa; cursor: pointer; background: none; border: none; line-height: 1; }
+/* --- Modais de Formulário (Pequenos e Médios) --- */
+.modal-container .form-container {
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    position: relative;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+}
+.form-container {
+    padding: 2rem;
+}
+.close-btn { position: absolute; top: 10px; right: 15px; font-size: 2.5rem; color: #aaa; cursor: pointer; background: none; border: none; line-height: 1; }
 .close-btn:hover { color: #333; }
-.form-row { margin-bottom: 1.5rem; }
+#pedido-modal-container .form-container { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+#estoque-modal-container .form-container, #assign-modal-container .form-container, #start-day-modal .form-container, #adjust-chicken-modal .form-container {
+    max-width: 500px;
+}
+.form-header { padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;}
+.form-body { padding: 1.5rem 2rem; overflow-y: auto; flex-grow: 1; }
+.form-footer { padding: 1.5rem 2rem; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
 .form-grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem; }
 .form-field { margin-bottom: 1rem; }
 .form-field-checkbox { display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0; }
-.form-field-checkbox input { height: 20px; width: 20px; padding: 0; }
+.form-field-checkbox input { width: 20px; height: 20px; }
 .form-field-checkbox label { margin-bottom: 0; font-weight: normal; }
 label { font-weight: 600; margin-bottom: 0.25rem; display: block; }
-input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 1rem; }
+input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 1rem; transition: all 0.2s; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: #4299e1; box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5); }
 button[type="submit"] { width: 100%; padding: 0.85rem; border: none; border-radius: 8px; background-color: #4299e1; color: white; font-size: 1.1rem; font-weight: 600; cursor: pointer; margin-top: 1rem; }
 button[type="submit"]:hover { background-color: #3182ce; }
 .form-message { margin-top: 1rem; padding: 0.75rem; border-radius: 8px; text-align: center; font-weight: 500; }
+.message.success { background-color: #c6f6d5; color: #2f855a; }
+.message.error { background-color: #fed7d7; color: #c53030; }
 
-/* --- ESTILOS DA PÁGINA DE MOTOQUEIROS --- */
-.page-container { 
-    display: grid; 
-    grid-template-columns: 2fr 1fr; 
-    gap: 1.5rem; 
-    height: 100%;
-}
-.motoqueiros-panel { display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; }
+/* --- Modal de Gerenciamento (Configurações) --- */
+.management-modal-content { background-color: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); width: 100%; max-width: 1200px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+.management-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; }
+.management-modal-header > div { display: flex; align-items: center; gap: 1rem; }
+.close-management-modal-btn { font-size: 2.5rem; color: #aaa; cursor: pointer; background: none; border: none; line-height: 1; }
+.management-modal-body { padding: 2rem; overflow-y: auto; flex-grow: 1; }
+
+/* --- Modal de Detalhes do Motoqueiro --- */
+#details-modal .form-container { max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.modal-header-details { padding: 2rem 2rem 1rem 2rem; border-bottom: 1px solid #e2e8f0; }
+#details-pedidos-list { overflow-y: auto; flex-grow: 1; padding: 1rem 2rem; }
+.modal-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+#details-modal .close-btn { position: static; }
+.modal-stats-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+.modal-stat { background-color: #f8fafc; padding: 0.75rem; border-radius: 8px; }
+.modal-stat-title { font-size: 0.8rem; color: #718096; margin-bottom: 0.25rem; }
+.modal-stat-value { font-size: 1.2rem; font-weight: 600; }
+.modal-footer-actions { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background-color: #f7fafc; border-top: 1px solid #e2e8f0; }
+.delete-motoqueiro-btn { background-color: #ef4444; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.save-route-btn { background-color: #4299e1; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.pedido-item.route-draggable { display: flex; align-items: center; gap: 0.5rem; background-color: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; }
+.pedido-card-content { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+.pedido-card-header, .pedido-card-footer { display: flex; justify-content: space-between; align-items: center; }
+.drag-handle { font-size: 1.5rem; color: #cbd5e0; padding: 0 0.5rem; cursor: grab; }
+
+
+/* ====================================================== */
+/* 4. ESTILOS DE PÁGINAS ESPECÍFICAS                     */
+/* ====================================================== */
+
+/* --- Página de Pedidos --- */
+.pedidos-container { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; flex-grow: 1; min-height: 0; }
+#pedidosTable td { font-size: 0.9rem; }
+#pedidosTable td small { font-size: 0.8rem; color: #718096; }
+.status-row-cancelado { background-color: #fef2f2; color: #9ca3af; text-decoration: line-through; }
+.status { padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+.status-pendente { background-color: #fefcbf; color: #9f580a; }
+.status-pendente-uairango { background-color: #bee3f8; color: #2b6cb0; }
+.status-em-rota { background-color: #e9d8a6; color: #947703; }
+.status-entregue { background-color: #c6f6d5; color: #2f855a; }
+.status-cancelado { background-color: #fed7d7; color: #9b2c2c; }
+.prazo { font-weight: bold; font-size: 1rem; }
+.prazo-ok { color: #2f855a; }
+.prazo-atrasado { color: #c53030; }
+.qty-display { background-color: #4299e1; color: white; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; }
+.action-btn.retirou-btn, .action-btn.assign-btn { background-color: #c6f6d5; border-color: #9ae6b4; color: #2f855a; font-weight: 600; }
+.action-btn.retirou-btn:hover, .action-btn.assign-btn:hover { background-color: #9ae6b4; }
+.action-btn.view-btn, .action-btn.accept-uairango-btn { background-color: #48bb78; color: white; border-color: #38a169; font-weight: 600; }
+.action-btn.view-btn:hover, .action-btn.accept-uairango-btn:hover { background-color: #38a169; }
+.action-btn.reject-uairango-btn { background-color: #f56565; border-color: #e53e3e; color: white; font-weight: 600; }
+.action-btn.reject-uairango-btn:hover { background-color: #e53e3e; }
+.action-btn.cancel-btn:hover { background-color: #fed7d7; border-color: #fca5a5; }
+
+/* --- Página de Motoqueiros --- */
+.page-container { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; height: 100%; }
+.motoqueiros-panel { display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; padding-right: 0.5rem; }
 .orders-panel { display: flex; flex-direction: column; background-color: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 .orders-panel h2 { margin-bottom: 1rem; }
-.pedidos-list { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; padding-right: 0.5rem; }
+.pedidos-list { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
 .pedido-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #e2e8f0; }
 .pedido-info { display: flex; flex-direction: column; }
 .pedido-info span { font-weight: 600; }
 .pedido-info small { color: #718096; }
 .pedido-qtd { font-weight: bold; color: #4a5568; }
-.entregar-btn { background-color: #48bb78; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; flex-shrink: 0; }
-.entregar-btn:hover { background-color: #38a169; }
 .no-pedidos { text-align: center; color: #718096; padding: 2rem; }
-
-/* --- LAYOUT DO MOTOQUEIRO-CARD --- */
-.motoqueiro-card { padding: 1rem 1.5rem; cursor: pointer; transition: background-color 0.2s ease-in-out, border-color 0.2s; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #fff; overflow: hidden; display: flex; flex-direction: column; gap: 1rem; }
+.motoqueiro-card { padding: 1rem 1.5rem; cursor: pointer; transition: all 0.2s; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #fff; overflow: hidden; display: flex; flex-direction: column; gap: 1rem; }
 .motoqueiro-card:hover { border-color: #cbd5e0; background-color: #f7fafc; }
 .motoqueiro-card-content { display: flex; align-items: center; gap: 1rem; }
 .motoqueiro-info-wrapper { flex-grow: 1; }
 .motoqueiro-info-wrapper h3 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-.bag-info { font-size: 0.9rem; color: #718096; display: block; margin-bottom: 0.5rem; }
+.bag-info { font-size: 0.9rem; color: #718096; }
 .chicken-squares { display: flex; flex-wrap: wrap; gap: 4px; }
 .chicken-square { width: 20px; height: 20px; border-radius: 4px; }
 .square-delivered { background-color: #48bb78; }
@@ -340,65 +215,60 @@ button[type="submit"]:hover { background-color: #3182ce; }
 .adjust-btn.add { background-color: #48bb78; }
 .adjust-btn.remove { background-color: #ef4444; }
 
-/* --- ESTILOS DA PÁGINA DO CLIENTE (index.html) --- */
-body.cliente-page { background-color: #F8F8F8; }
+/* --- Página de Configurações --- */
+.config-page main { background-color: #f4f6f8; }
+.config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+.config-card { background-color: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; border: 1px solid #e2e8f0; }
+.config-card h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.config-card p { color: #718096; flex-grow: 1; margin-bottom: 1.5rem; }
+.manage-btn { background-color: #4299e1; color: white; border: none; padding: 0.75rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; align-self: flex-end; width: 100%; }
+.manage-btn:hover { background-color: #3182ce; }
+.automation-settings { display: flex; flex-direction: column; gap: 1rem; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background-color: #f7fafc; border-radius: 8px; }
+.setting-row span { font-weight: 500; }
+.switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #48bb78; }
+input:checked + .slider:before { transform: translateX(26px); }
+
+/* --- Páginas do Cliente, Entregas e Login --- */
+body.cliente-page, body.entregas-page, body.login-page { overflow-y: auto; }
 .cliente-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background-color: #fff; }
-.logo { font-family: 'Arial', sans-serif; font-size: 1.5rem; line-height: 1; color: #333; }
-.logo strong { font-weight: bold; }
+.logo { font-family: 'Arial', sans-serif; font-size: 1.5rem; line-height: 1; }
 .login-link { font-weight: bold; text-decoration: none; color: #333; padding: 0.5rem 1rem; border: 2px solid #ccc; border-radius: 20px; }
-.login-link:hover { background-color: #333; color: #fff; }
 .cliente-main { flex-grow: 1; display: flex; flex-direction: column; align-items: center; padding: 1rem; }
 .info-bar { width: 100%; max-width: 450px; text-align: center; margin-bottom: 1rem; font-size: 0.9rem; color: #777; }
 .cliente-form { width: 100%; max-width: 450px; background-color: #fff; padding: 2rem; border-radius: 10px; }
-.form-bloco { display: none; flex-direction: column; gap: 1rem; }
-.form-bloco.visible { display: flex; }
+.form-bloco { display: none; }
+.form-bloco.visible { display: flex; flex-direction: column; gap: 1rem; }
 .bloco-separator { height: 1px; background-color: #eee; margin: 1rem 0 2rem 0; position: relative; }
-.bloco-separator::before, .bloco-separator::after { content: ''; position: absolute; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; background-color: #ccc; border-radius: 50%; }
-.bloco-separator::before { left: 20%; }
-.bloco-separator::after { right: 20%; }
-.cliente-form label { font-size: 1rem; color: #555; margin-bottom: -0.5rem; }
-.cliente-form input, .cliente-form select { padding: 0.8rem 1rem; border: 2px solid #ddd; font-size: 1.1rem; }
-.cliente-form input:focus, .cliente-form select:focus { border-color: #ff9900; }
 .select-wrapper { position: relative; }
 .select-wrapper::after { content: '▼'; font-size: 1rem; color: #ff9900; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); pointer-events: none; }
 .cliente-form select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
 .quantidade-pagamento-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; align-items: flex-end; }
 .quantidade-input { display: flex; align-items: center; border: 2px solid #ddd; border-radius: 8px; padding: 0.1rem; }
-#quantidade_display { width: 100%; text-align: center; font-size: 1.1rem; color: #333; padding: 0.7rem 0; }
-.quantidade-input button { background-color: transparent; border: none; color: #ff9900; font-size: 1.5rem; cursor: pointer; padding: 0 1rem; }
+#quantidade_display { width: 100%; text-align: center; font-size: 1.1rem; padding: 0.7rem 0; }
+.quantidade-input button { background: transparent; border: none; color: #ff9900; font-size: 1.5rem; cursor: pointer; padding: 0 1rem; }
 .preco-total-container { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; font-size: 1.2rem; }
 .preco-total-container strong { font-size: 1.5rem; }
-.cliente-form button[type="submit"] { background-color: #ff9900; font-weight: bold; }
-.cliente-form button[type="submit"]:hover { background-color: #e68a00; }
-.cliente-form button[type="submit"]:disabled { background-color: #ccc; cursor: not-allowed; }
-.success-message { text-align: center; padding: 2rem; }
-.success-message h2 { color: #48bb78; margin-bottom: 1rem; }
-
-/* --- ESTILOS DA PÁGINA DE ENTREGAS (MOTOQUEIRO) --- */
-body.entregas-page, body.login-page { overflow-y: auto; } /* Permite rolagem */
+.cliente-form button[type="submit"] { background-color: #ff9900; }
+.success-message h2 { color: #48bb78; }
 .entregas-page .container { max-width: 600px; margin: 0 auto; padding: 1rem; }
-.login-view, .deliveries-view { display: flex; flex-direction: column; justify-content: center; }
 .deliveries-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .delivery-card { background-color: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 1rem; padding: 1.5rem; }
-.delivery-card .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
-.card-body p { margin-bottom: 0.5rem; color: #718096; }
-.card-body p strong { color: #2d3748; }
-.card-actions { margin-top: 1.5rem; }
-.btn-entregue { background-color: #48bb78; width: 100%; padding: 0.75rem; font-size: 1rem; color: white; border: none; border-radius: 8px; cursor: pointer; }
-.btn-entregue:disabled { background-color: #a0aec0; }
+.btn-entregue { background-color: #48bb78; width: 100%; padding: 0.75rem; font-size: 1rem; color: white; border: none; border-radius: 8px; }
 .card-body-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
 .card-delivery-controls { display: flex; align-items: center; gap: 0.5rem; }
 .map-btn { background-color: #4299e1; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
 .map-btn svg { width: 24px; height: 24px; }
-.deliveries-section-title { margin-top: 2rem; margin-bottom: 1rem; color: #4a5568; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; }
 .card-entregue { opacity: 0.65; background-color: #f7fafc; }
-
-/* --- ESTILOS DA PÁGINA DE LOGIN --- */
-body.login-page { display: flex; justify-content: center; align-items: center; }
+.login-page { display: flex; justify-content: center; align-items: center; }
 .login-container { width: 100%; max-width: 400px; padding: 2.5rem; background-color: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1); text-align: center; }
-.login-container p { color: #718096; margin-bottom: 2rem; }
+.login-container p { margin-bottom: 2rem; }
 
-/* Estilos de Drag & Drop */
+/* Drag & Drop */
 .pedido-item.dragging { opacity: 0.5; background: #e0e7ff; }
 .motoqueiro-card.drag-over { border: 2px dashed #4299e1; background-color: #ebf8ff; }
 #details-modal .pedido-item.route-draggable { cursor: grab; }
