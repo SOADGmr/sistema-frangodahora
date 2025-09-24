@@ -348,13 +348,12 @@
             tr.dataset.horarioPedido = p.horario_pedido;
             tr.dataset.tempoPrevisto = p.tempo_previsto;
 
-            const isUaiRangoPendente = p.canal_venda === 'UaiRango' && p.status === 'Pendente';
+            // ALTERAÇÃO: A lógica agora se baseia apenas no status do pedido.
+            const isUaiRangoPendente = p.status === 'Pendente UaiRango';
             let statusDisplay = p.status;
             let statusClass = p.status.toLowerCase().replace(/ /g, '-');
             
             if (isUaiRangoPendente) {
-                statusDisplay = 'Pendente UaiRango';
-                statusClass = 'pendente-uairango';
                 tr.className = 'status-row-pendente-uairango';
             } else {
                 tr.className = `status-row-${statusClass}`;
@@ -674,4 +673,3 @@
 
 </body>
 </html>
-

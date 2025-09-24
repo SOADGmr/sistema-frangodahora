@@ -99,13 +99,13 @@ router.post('/uairango', (req, res) => {
 
     const isRetirada = tipo_entrega && tipo_entrega.toLowerCase() === 'retirada';
     
-    // CORREÇÃO: Status do pedido volta a ser 'Pendente' para ser compatível com a constraint do banco de dados.
+    // ALTERAÇÃO: Status do pedido do UaiRango é 'Pendente UaiRango' para diferenciação no painel.
     const sql = `
         INSERT INTO pedidos (
             uairango_id_pedido, cliente_nome, cliente_telefone, cliente_endereco, cliente_bairro,
             quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento,
             canal_venda, status, horario_pedido, picado, observacao, tempo_previsto
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UaiRango', 'Pendente', datetime('now', 'localtime'), ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UaiRango', 'Pendente UaiRango', datetime('now', 'localtime'), ?, ?, ?)
         ON CONFLICT(uairango_id_pedido) DO NOTHING
     `;
 
@@ -140,6 +140,7 @@ router.post('/uairango', (req, res) => {
 // Rota para obter todos os pedidos de uma data específica
 router.get('/', (req, res) => {
     const data = req.query.data || new Date().toISOString().slice(0, 10);
+    // ALTERAÇÃO: Ordenação ajustada para o novo status 'Pendente UaiRango'
     const sql = `
         SELECT p.*, m.nome as motoqueiro_nome 
         FROM pedidos p 
@@ -147,7 +148,7 @@ router.get('/', (req, res) => {
         WHERE date(p.horario_pedido) = ?
         ORDER BY 
             CASE 
-                WHEN p.canal_venda = 'UaiRango' AND p.status = 'Pendente' THEN 0
+                WHEN p.status = 'Pendente UaiRango' THEN 0
                 WHEN p.status = 'Pendente' THEN 1
                 WHEN p.status = 'Em Rota' THEN 2
                 WHEN p.status = 'Entregue' THEN 3
@@ -193,6 +194,7 @@ router.post('/uairango/:id/aceitar', async (req, res) => {
         
         await uairangoService.acceptOrder(pedido.uairango_id_pedido, est.token_developer);
 
+        // ALTERAÇÃO: Ao aceitar, o status muda para 'Pendente', tornando-o um pedido normal do sistema.
         db.run("UPDATE pedidos SET status = 'Pendente' WHERE id = ?", [id], function(err) {
             if (err) return res.status(500).json({ error: 'Erro ao atualizar status do pedido local.' });
             res.json({ message: 'Pedido aceito com sucesso!' });
@@ -360,4 +362,3 @@ router.put('/ordenar-rota', (req, res) => {
 });
 
 module.exports = router;
-
