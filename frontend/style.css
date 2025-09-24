@@ -173,7 +173,7 @@ h1 {
     text-align: center;
 }
 
-/* Tabela de Pedidos (index.html) */
+/* --- ESTILOS DA TABELA DE PEDIDOS ATUALIZADA --- */
 .pedidos-container {
   background-color: #fff;
   padding: 2rem;
@@ -194,14 +194,15 @@ h1 {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem; /* Fonte um pouco menor */
 }
 
 #pedidosTable th, #pedidosTable td {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem; /* Padding reduzido */
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
+  white-space: nowrap; /* Impede que o conteúdo quebre linha */
 }
 
 #pedidosTable th {
@@ -212,6 +213,20 @@ h1 {
   top: 0;
   z-index: 1;
 }
+
+/* Larguras específicas para colunas */
+#pedidosTable .col-prazo { width: 8%; }
+#pedidosTable .col-cliente { width: 25%; }
+#pedidosTable .col-bairro { width: 20%; }
+#pedidosTable .col-qtd, #pedidosTable .col-valor { width: 8%; text-align: center; }
+#pedidosTable .col-status { width: 12%; text-align: center; }
+#pedidosTable .col-acoes { width: 19%; text-align: right; }
+
+#pedidosTable .col-cliente small {
+    color: #718096;
+    font-size: 0.8rem;
+}
+
 
 #pedidosTable tbody tr:hover {
   background-color: #f7fafc;
@@ -230,6 +245,7 @@ tr.status-row-cancelado {
   font-size: 0.8rem;
   text-transform: uppercase;
   white-space: nowrap;
+  display: inline-block;
 }
 .status-pendente { background-color: #fefcbf; color: #9f580a; }
 .status-em-rota { background-color: #e9d8a6; color: #947703; }
@@ -239,19 +255,16 @@ tr.status-row-cancelado {
 /* NOVO: Estilos para o Prazo */
 .prazo {
     font-weight: bold;
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
-.prazo-ok {
-    color: #2f855a; /* Verde */
-}
-.prazo-atrasado {
-    color: #c53030; /* Vermelho */
-}
+.prazo-ok { color: #2f855a; }
+.prazo-atrasado { color: #c53030; }
 
 
 .action-buttons {
     display: flex;
     gap: 0.5rem;
+    justify-content: flex-end;
 }
 .action-btn {
   padding: 0.4rem 0.8rem;
@@ -261,41 +274,24 @@ tr.status-row-cancelado {
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s;
+  font-size: 0.85rem;
 }
 .action-btn:hover {
   background-color: #edf2f7;
   border-color: #a0aec0;
 }
-.action-btn.cancel-btn:hover {
-    background-color: #fed7d7;
-    border-color: #fca5a5;
-}
-.action-btn:disabled {
-    background-color: #f3f4f6;
-    color: #9ca3af;
-    cursor: not-allowed;
-}
-.action-btn.retirou-btn {
-    background-color: #c6f6d5;
-    border-color: #9ae6b4;
-    color: #2f855a;
-    font-weight: 600;
-}
-.action-btn.retirou-btn:hover {
-    background-color: #9ae6b4;
-}
+.action-btn.cancel-btn:hover { background-color: #fed7d7; border-color: #fca5a5; }
+.action-btn:disabled { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+
+.action-btn.retirou-btn { background-color: #c6f6d5; border-color: #9ae6b4; color: #2f855a; font-weight: 600; }
+.action-btn.retirou-btn:hover { background-color: #9ae6b4; }
+
+.action-btn.view-btn { background-color: #38a169; border-color: #2f855a; color: white; font-weight: 600; }
+.action-btn.view-btn:hover { background-color: #2f855a; }
 
 .qty-display {
-    background-color: #38a169;
-    color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
     font-weight: bold;
+    font-size: 1rem;
 }
 
 

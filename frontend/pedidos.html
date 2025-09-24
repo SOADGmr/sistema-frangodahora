@@ -89,14 +89,14 @@
         <table id="pedidosTable">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Cliente</th>
-              <th>Endereço</th>
-              <th>Qtd.</th>
-              <th>Valor</th>
-              <th>Prazo</th>
-              <th>Status</th>
-              <th>Ações</th>
+              <!-- COLUNAS ATUALIZADAS -->
+              <th class="col-prazo">Prazo</th>
+              <th class="col-cliente">Cliente</th>
+              <th class="col-bairro">Bairro</th>
+              <th class="col-qtd">Qtd.</th>
+              <th class="col-valor">Valor</th>
+              <th class="col-status">Status</th>
+              <th class="col-acoes">Ações</th>
             </tr>
           </thead>
           <tbody id="pedidosTbody"></tbody>
@@ -107,6 +107,7 @@
 
   <button id="fab" class="fab">Novo Pedido</button>
 
+  <!-- MODAL DE NOVO/EDITAR PEDIDO (Sem alterações) -->
   <div id="pedido-modal-container" class="modal-container hidden">
     <section class="form-container">
         <div class="form-header">
@@ -300,7 +301,7 @@
         }
     };
 
-    const fetchPedidos = async (dateString) => { try { const pedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`); renderPedidos(pedidos); } catch (error) { elements.pedidosTbody.innerHTML = `<tr><td colspan="8">${error.message}</td></tr>`; } };
+    const fetchPedidos = async (dateString) => { try { const pedidos = await fetchJSON(`${API_URL}/pedidos?data=${dateString}`); renderPedidos(pedidos); } catch (error) { elements.pedidosTbody.innerHTML = `<tr><td colspan="7">${error.message}</td></tr>`; } };
     
     const fetchDataForDate = (date) => { 
         const dateString = formatDateToYYYYMMDD(date); 
@@ -335,11 +336,10 @@
         return `<span class="prazo ${classe}">${sinal}${hFormat}:${mFormat}</span>`;
     };
 
-    // FUNÇÃO ATUALIZADA para lidar com o novo status
     const renderPedidos = (pedidos) => {
         elements.pedidosTbody.innerHTML = '';
         if (pedidos.length === 0) {
-            elements.pedidosTbody.innerHTML = `<tr><td colspan="8">Nenhum pedido registrado para esta data.</td></tr>`;
+            elements.pedidosTbody.innerHTML = `<tr><td colspan="7">Nenhum pedido registrado para esta data.</td></tr>`;
             return;
         }
         pedidos.forEach(p => {
@@ -348,7 +348,6 @@
             tr.dataset.horarioPedido = p.horario_pedido;
             tr.dataset.tempoPrevisto = p.tempo_previsto;
 
-            // ALTERAÇÃO: A lógica agora se baseia apenas no status do pedido.
             const isUaiRangoPendente = p.status === 'Pendente UaiRango';
             let statusDisplay = p.status;
             let statusClass = p.status.toLowerCase().replace(/ /g, '-');
@@ -362,39 +361,43 @@
             let actionButtonsHTML = '';
             const totalFrangos = p.quantidade_frangos + (p.meio_frango ? 0.5 : 0);
 
+            // Botão Ver Pedido sempre aparece
+            actionButtonsHTML += `<button class="action-btn view-btn" data-id="${p.id}">Ver Pedido</button>`;
+
             if (isUaiRangoPendente) {
-                actionButtonsHTML = `
+                actionButtonsHTML += `
                     <button class="action-btn accept-uairango-btn" data-id="${p.id}">Aceitar</button>
                     <button class="action-btn reject-uairango-btn" data-id="${p.id}">Rejeitar</button>
                 `;
             } else if (p.status === 'Pendente') {
                 if (p.cliente_endereco === 'Retirada') {
-                    actionButtonsHTML = `<button class="action-btn retirou-btn" data-id="${p.id}">Retirou</button>`;
+                    actionButtonsHTML += `<button class="action-btn retirou-btn" data-id="${p.id}">Retirou</button>`;
                 } else {
-                    actionButtonsHTML = `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Atribuir</button>`;
+                    actionButtonsHTML += `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Atribuir</button>`;
                 }
+                 actionButtonsHTML += `<button class="action-btn cancel-btn" data-id="${p.id}">Cancelar</button>`;
             } else if (p.status === 'Em Rota') {
-                actionButtonsHTML = `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Reatribuir</button>`;
+                 actionButtonsHTML += `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Reatribuir</button>`;
+                 actionButtonsHTML += `<button class="action-btn cancel-btn" data-id="${p.id}">Cancelar</button>`;
+            } else if (p.status === 'Cancelado' || p.status === 'Entregue') {
+                // Não mostra outros botões se cancelado ou entregue, apenas "Ver Pedido"
             }
 
-            const isCancelado = p.status === 'Cancelado';
-            const isEntregue = p.status === 'Entregue';
 
-            const prazoHtml = (p.status === 'Em Rota' || p.status === 'Pendente') ? calcularPrazo(p.horario_pedido, p.tempo_previsto) : '---';
+            const prazoHtml = (p.status === 'Em Rota' || p.status === 'Pendente' || p.status === 'Pendente UaiRango') ? calcularPrazo(p.horario_pedido, p.tempo_previsto) : '---';
+            const bairroDisplay = p.cliente_endereco === 'Retirada' ? 'Retirada no Local' : p.cliente_bairro || 'N/A';
+            const clienteInfo = p.cliente_nome ? `${p.uairango_id_pedido ? 'UaiRango | ' : ''}${p.cliente_nome}<br><small>${p.cliente_telefone || ''}</small>` : 'N/A';
 
             tr.innerHTML = `
-                <td>${p.uairango_id_pedido ? `<img src="https://www.uairango.com/assets/img/favicon/favicon-32x32.png" alt="UaiRango" style="width:16px; margin-right: 4px; vertical-align: middle;">${p.id}` : p.id}</td>
-                <td>${p.cliente_nome || 'N/A'}<br><small>${p.cliente_telefone || ''}</small></td>
-                <td>${p.cliente_endereco}<br><small>${p.cliente_bairro || ''}</small></td>
-                <td><div class="qty-display">${totalFrangos}</div></td>
-                <td>R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</td>
-                <td class="prazo-cell">${prazoHtml}</td>
-                <td><span class="status status-${statusClass}">${statusDisplay}</span></td>
-                <td>
+                <td class="col-prazo">${prazoHtml}</td>
+                <td class="col-cliente">${clienteInfo}</td>
+                <td class="col-bairro">${bairroDisplay}</td>
+                <td class="col-qtd">${totalFrangos}</td>
+                <td class="col-valor">R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</td>
+                <td class="col-status"><span class="status status-${statusClass}">${statusDisplay}</span></td>
+                <td class="col-acoes">
                     <div class="action-buttons">
                         ${actionButtonsHTML}
-                        <button class="action-btn edit-btn" data-id="${p.id}" ${isCancelado || isUaiRangoPendente ? 'disabled' : ''}>Editar</button>
-                        <button class="action-btn cancel-btn" data-id="${p.id}" ${isCancelado || isEntregue ? 'disabled' : ''}>Cancelar</button>
                     </div>
                 </td>`;
             elements.pedidosTbody.appendChild(tr);
@@ -407,8 +410,8 @@
         prazoUpdateInterval = setInterval(() => {
             document.querySelectorAll('#pedidosTbody tr[data-pedido-id]').forEach(tr => {
                 const statusSpan = tr.querySelector('.status');
-                if (statusSpan && (statusSpan.textContent.includes('Pendente') || statusSpan.textContent === 'Em Rota')) {
-                    const prazoCell = tr.querySelector('.prazo-cell');
+                if (statusSpan && (statusSpan.textContent.includes('Pendente') || statusSpan.textContent === 'Em Rota' || statusSpan.textContent.includes('UaiRango'))) {
+                    const prazoCell = tr.querySelector('.col-prazo');
                     if (prazoCell) {
                         prazoCell.innerHTML = calcularPrazo(tr.dataset.horarioPedido, tr.dataset.tempoPrevisto);
                     }
@@ -583,14 +586,20 @@
     };
     
     const handleTableClick = async (e) => {
-        const target = e.target;
+        const target = e.target.closest('.action-btn');
+        if (!target) return;
+
         const id = target.dataset.id;
         if (!id) return;
-
+        
+        if (target.classList.contains('view-btn')) {
+             // AINDA A IMPLEMENTAR O MODAL DE VISUALIZAÇÃO
+             alert(`Funcionalidade "Ver Pedido #${id}" será implementada em breve.`);
+             // Futuramente, você pode chamar uma função como: openViewPedidoModal(id);
+        }
         if (target.classList.contains('accept-uairango-btn')) { handleAcceptUaiRango(id); }
         if (target.classList.contains('reject-uairango-btn')) { handleRejectUaiRango(id); }
         if (target.classList.contains('assign-btn')) { const qtd = parseFloat(target.dataset.qtd); openAssignModal(id, qtd); }
-        if (target.classList.contains('edit-btn')) { if (target.disabled) return; try { const pedido = await fetchJSON(`${API_URL}/pedidos/${id}`); openPedidoModal('edit', pedido); } catch (error) { alert(`Erro ao carregar dados do pedido: ${error.message}`); } }
         if (target.classList.contains('cancel-btn')) { if (target.disabled) return; if (confirm(`Tem certeza que deseja cancelar o pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/cancelar`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao cancelar pedido: ${error.message}`); } } }
         if (target.classList.contains('retirou-btn')) { if (confirm(`Confirmar a retirada do pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/retirou`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao confirmar retirada: ${error.message}`); } } }
     };
@@ -673,3 +682,4 @@
 
 </body>
 </html>
+
