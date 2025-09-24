@@ -71,7 +71,7 @@ router.post('/uairango', (req, res) => {
 
     const {
         cod_pedido, valor_total, observacao, prazo_max, forma_pagamento,
-        tipo_entrega, taxa_entrega, usuario, endereco, produtos
+        tipo_entrega, taxa_entrega, usuario, endereco, produtos, id_estabelecimento
     } = uairangoOrder;
 
     let totalFrangos = 0;
@@ -99,13 +99,13 @@ router.post('/uairango', (req, res) => {
 
     const isRetirada = tipo_entrega && tipo_entrega.toLowerCase() === 'retirada';
     
-    // ALTERAÇÃO: Status do pedido do UaiRango é 'Pendente UaiRango' para diferenciação no painel.
     const sql = `
         INSERT INTO pedidos (
             uairango_id_pedido, cliente_nome, cliente_telefone, cliente_endereco, cliente_bairro,
             quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento,
-            canal_venda, status, horario_pedido, picado, observacao, tempo_previsto
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UaiRango', 'Pendente UaiRango', datetime('now', 'localtime'), ?, ?, ?)
+            canal_venda, status, horario_pedido, picado, observacao, tempo_previsto,
+            uairango_id_estabelecimento
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UaiRango', 'Pendente UaiRango', datetime('now', 'localtime'), ?, ?, ?, ?)
         ON CONFLICT(uairango_id_pedido) DO NOTHING
     `;
 
@@ -122,7 +122,8 @@ router.post('/uairango', (req, res) => {
         formaPagamentoLocal,
         0, // picado (padrão)
         observacao,
-        prazo_max
+        prazo_max,
+        id_estabelecimento
     ];
 
     db.run(sql, params, function(err) {
@@ -140,7 +141,6 @@ router.post('/uairango', (req, res) => {
 // Rota para obter todos os pedidos de uma data específica
 router.get('/', (req, res) => {
     const data = req.query.data || new Date().toISOString().slice(0, 10);
-    // ALTERAÇÃO: Ordenação ajustada para o novo status 'Pendente UaiRango'
     const sql = `
         SELECT p.*, m.nome as motoqueiro_nome 
         FROM pedidos p 
@@ -194,7 +194,6 @@ router.post('/uairango/:id/aceitar', async (req, res) => {
         
         await uairangoService.acceptOrder(pedido.uairango_id_pedido, est.token_developer);
 
-        // ALTERAÇÃO: Ao aceitar, o status muda para 'Pendente', tornando-o um pedido normal do sistema.
         db.run("UPDATE pedidos SET status = 'Pendente' WHERE id = ?", [id], function(err) {
             if (err) return res.status(500).json({ error: 'Erro ao atualizar status do pedido local.' });
             res.json({ message: 'Pedido aceito com sucesso!' });

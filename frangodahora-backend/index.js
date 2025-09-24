@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const db = require('./db'); 
+const { initializeDatabase } = require('./db'); // MUDANÇA: Importa a função de inicialização
 
 // Importa os arquivos de rotas
 const pedidosRoutes = require('./routes/pedidos');
@@ -9,7 +9,7 @@ const motoqueirosRoutes = require('./routes/motoqueiros');
 const estoqueRoutes = require('./routes/estoque');
 const configuracoesRoutes = require('./routes/configuracoes');
 const authRoutes = require('./routes/auth');
-const uairangoService = require('./uairango-service'); // NOVO: Importa o serviço do UaiRango
+const uairangoService = require('./uairango-service');
 
 const app = express();
 
@@ -34,10 +34,19 @@ app.get('/api', (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
-  
-  // NOVO: Inicia o serviço de busca de pedidos do UaiRango
-  // O '1' significa que ele vai verificar a cada 1 minuto.
-  uairangoService.startPolling(1);
+
+// MUDANÇA: Inicializa o banco de dados ANTES de iniciar o servidor
+initializeDatabase((err) => {
+    if (err) {
+        console.error("Falha ao inicializar o banco de dados. O servidor não será iniciado.", err);
+        process.exit(1); // Encerra o processo se o DB falhar
+    }
+
+    // O banco de dados está pronto, agora podemos iniciar o servidor e os serviços
+    app.listen(PORT, () => {
+      console.log(`Servidor rodando em http://localhost:${PORT}`);
+      
+      // Inicia o serviço de busca de pedidos do UaiRango
+      uairangoService.startPolling(1);
+    });
 });
