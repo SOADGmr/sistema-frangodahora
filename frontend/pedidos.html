@@ -40,7 +40,6 @@
         background-color: #bee3f8;
         color: #2b6cb0;
     }
-
   </style>
 </head>
 <body>
@@ -106,6 +105,55 @@
   </main>
 
   <button id="fab" class="fab">Novo Pedido</button>
+
+  <!-- MODAL DE DETALHES DO PEDIDO (NOVO) -->
+  <div id="view-pedido-modal-container" class="modal-container hidden">
+      <div class="view-pedido-modal-content">
+          <div class="view-pedido-modal-header">
+              <h2 id="view-modal-title">Informações do pedido #000</h2>
+              <button id="close-view-pedido-modal-btn" class="close-btn">&times;</button>
+          </div>
+          <div class="view-pedido-modal-body">
+              <div class="pedido-details-grid">
+                  <!-- Coluna de Dados do Pedido -->
+                  <div class="details-column">
+                      <div class="details-card">
+                          <h3 class="details-card-header">Dados do Pedido</h3>
+                          <div class="details-card-body">
+                              <p><strong>Horário do Pedido:</strong> <span id="view-horario">--:--</span></p>
+                              <p><strong>Prazo Limite:</strong> <span id="view-prazo">--:--</span></p>
+                              <p><strong>Tipo:</strong> <span id="view-tipo">--</span></p>
+                              <p><strong>Pagamento:</strong> <span id="view-pagamento">--</span></p>
+                              <p><strong>Quantidade:</strong> <span id="view-quantidade">--</span></p>
+                              <p><strong>Valor do Pedido:</strong> <span id="view-valor-pedido">R$ --,--</span></p>
+                              <p><strong>Taxa de Entrega:</strong> <span id="view-taxa">R$ --,--</span></p>
+                              <p><strong>Valor Total:</strong> <strong id="view-valor-total">R$ --,--</strong></p>
+                          </div>
+                      </div>
+                      <div class="details-card">
+                          <h3 class="details-card-header">Dados do Cliente</h3>
+                          <div class="details-card-body">
+                              <p><strong>Nome:</strong> <span id="view-cliente-nome">--</span></p>
+                              <p><strong>Bairro:</strong> <span id="view-cliente-bairro">--</span></p>
+                              <p><strong>Endereço:</strong> <span id="view-cliente-endereco">--</span></p>
+                              <p><strong>Referência:</strong> <span id="view-cliente-referencia">--</span></p>
+                              <a href="#" id="view-maps-link" target="_blank" class="gmaps-button">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                      <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
+                                  </svg>
+                                  Localizar no Google Maps
+                              </a>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div class="view-pedido-modal-footer" id="view-modal-footer">
+              <!-- Botões de ação serão inseridos aqui via JS -->
+          </div>
+      </div>
+  </div>
+
 
   <!-- MODAL DE NOVO/EDITAR PEDIDO (Sem alterações) -->
   <div id="pedido-modal-container" class="modal-container hidden">
@@ -238,6 +286,11 @@
         clienteBairroInput: document.getElementById('cliente_bairro'),
         bairrosDatalist: document.getElementById('bairros-datalist'),
         logoutBtn: document.getElementById('logout-btn'),
+        // View Modal Elements
+        viewPedidoModal: document.getElementById('view-pedido-modal-container'),
+        closeViewPedidoModalBtn: document.getElementById('close-view-pedido-modal-btn'),
+        viewModalTitle: document.getElementById('view-modal-title'),
+        viewModalFooter: document.getElementById('view-modal-footer'),
     };
     
     const normalizarTexto = (texto) => {
@@ -451,6 +504,83 @@
         updateTotalPrice();
         openModal(elements.pedidoModal); 
     };
+
+    const openViewPedidoModal = async (pedidoId) => {
+        try {
+            const pedido = await fetchJSON(`${API_URL}/pedidos/${pedidoId}`);
+            
+            elements.viewModalTitle.textContent = `Informações do pedido #${pedido.id}`;
+
+            const horarioPedido = new Date(pedido.horario_pedido);
+            const prazoLimite = new Date(horarioPedido.getTime() + (pedido.tempo_previsto || 0) * 60000);
+
+            document.getElementById('view-horario').textContent = horarioPedido.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('view-prazo').textContent = prazoLimite.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            const tipo = pedido.cliente_endereco === 'Retirada' ? 'Retirada' : 'Delivery';
+            document.getElementById('view-tipo').textContent = tipo;
+            
+            document.getElementById('view-pagamento').textContent = pedido.forma_pagamento;
+            
+            const totalFrangos = pedido.quantidade_frangos + (pedido.meio_frango ? 0.5 : 0);
+            document.getElementById('view-quantidade').textContent = `${totalFrangos} frango(s)`;
+
+            const valorPedido = pedido.preco_total - pedido.taxa_entrega;
+            document.getElementById('view-valor-pedido').textContent = `R$ ${valorPedido.toFixed(2)}`;
+            document.getElementById('view-taxa').textContent = `R$ ${pedido.taxa_entrega.toFixed(2)}`;
+            document.getElementById('view-valor-total').textContent = `R$ ${pedido.preco_total.toFixed(2)}`;
+
+            document.getElementById('view-cliente-nome').textContent = pedido.cliente_nome;
+            document.getElementById('view-cliente-bairro').textContent = pedido.cliente_bairro || 'N/A';
+            document.getElementById('view-cliente-endereco').textContent = tipo === 'Retirada' ? 'Retirada no Balcão' : pedido.cliente_endereco;
+            document.getElementById('view-cliente-referencia').textContent = pedido.cliente_referencia || 'Nenhuma';
+            
+            const mapsLink = document.getElementById('view-maps-link');
+            if (tipo === 'Delivery') {
+                mapsLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pedido.cliente_endereco + ', ' + pedido.cliente_bairro)}`;
+                mapsLink.style.display = 'flex';
+            } else {
+                mapsLink.style.display = 'none';
+            }
+
+            // --- Lógica dos botões do rodapé ---
+            elements.viewModalFooter.innerHTML = '';
+            if (pedido.status === 'Pendente UaiRango') {
+                elements.viewModalFooter.innerHTML = `
+                    <button class="action-btn reject-uairango-btn" data-id="${pedido.id}">Rejeitar</button>
+                    <button class="action-btn accept-uairango-btn" data-id="${pedido.id}">Aceitar Pedido</button>
+                `;
+            } else if (pedido.status !== 'Cancelado' && pedido.status !== 'Entregue') {
+                const atribuirBtnText = pedido.motoqueiro_id ? 'Reatribuir' : 'Atribuir';
+                elements.viewModalFooter.innerHTML = `
+                    <button class="action-btn" onclick="openEditModalFromView(${pedido.id})">Editar</button>
+                    <button class="action-btn cancel-btn" onclick="handleCancelFromView(${pedido.id})">Cancelar</button>
+                    <button class="action-btn assign-btn" onclick="openAssignModalFromView(${pedido.id}, ${totalFrangos})">${atribuirBtnText}</button>
+                `;
+            }
+
+            openModal(elements.viewPedidoModal);
+
+        } catch (error) {
+            alert(`Erro ao buscar detalhes do pedido: ${error.message}`);
+        }
+    };
+
+    // Funções auxiliares para chamar handlers a partir do modal de visualização
+    window.openEditModalFromView = async (pedidoId) => {
+        const pedido = await fetchJSON(`${API_URL}/pedidos/${pedidoId}`);
+        closeModal(elements.viewPedidoModal);
+        openPedidoModal('edit', pedido);
+    };
+    window.handleCancelFromView = (pedidoId) => {
+        closeModal(elements.viewPedidoModal);
+        document.querySelector(`.cancel-btn[data-id='${pedidoId}']`).click();
+    };
+    window.openAssignModalFromView = (pedidoId, qtd) => {
+        closeModal(elements.viewPedidoModal);
+        openAssignModal(pedidoId, qtd);
+    };
+
     
     const openAssignModal = async (pedidoId, frangosPedido) => {
         elements.assignPedidoId.textContent = `#${pedidoId}`;
@@ -592,11 +722,7 @@
         const id = target.dataset.id;
         if (!id) return;
         
-        if (target.classList.contains('view-btn')) {
-             // AINDA A IMPLEMENTAR O MODAL DE VISUALIZAÇÃO
-             alert(`Funcionalidade "Ver Pedido #${id}" será implementada em breve.`);
-             // Futuramente, você pode chamar uma função como: openViewPedidoModal(id);
-        }
+        if (target.classList.contains('view-btn')) { openViewPedidoModal(id); }
         if (target.classList.contains('accept-uairango-btn')) { handleAcceptUaiRango(id); }
         if (target.classList.contains('reject-uairango-btn')) { handleRejectUaiRango(id); }
         if (target.classList.contains('assign-btn')) { const qtd = parseFloat(target.dataset.qtd); openAssignModal(id, qtd); }
@@ -667,6 +793,28 @@
             e.preventDefault();
             logout();
         });
+
+        // Event Listeners for View Modal
+        elements.closeViewPedidoModalBtn.addEventListener('click', () => closeModal(elements.viewPedidoModal));
+        elements.viewPedidoModal.addEventListener('click', (e) => {
+            if (e.target === elements.viewPedidoModal) {
+                closeModal(elements.viewPedidoModal);
+            }
+        });
+
+        elements.viewModalFooter.addEventListener('click', (e) => {
+            const target = e.target.closest('.action-btn');
+            if (!target) return;
+            const id = target.dataset.id;
+            if (target.classList.contains('accept-uairango-btn')) {
+                closeModal(elements.viewPedidoModal);
+                handleAcceptUaiRango(id);
+            }
+            if (target.classList.contains('reject-uairango-btn')) {
+                closeModal(elements.viewPedidoModal);
+                handleRejectUaiRango(id);
+            }
+        });
     }
 
     function init() { 
@@ -682,4 +830,3 @@
 
 </body>
 </html>
-

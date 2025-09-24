@@ -27,9 +27,10 @@ main {
   min-height: 0;
 }
 
-h1, h2 { color: #2d3748; }
+h1, h2, h3 { color: #2d3748; }
 h1 { font-size: 1.75rem; }
 h2 { font-size: 1.5rem; }
+h3 { font-size: 1.1rem; }
 
 .hidden { display: none !important; }
 
@@ -97,6 +98,12 @@ td .action-buttons { display: flex; gap: 0.5rem; }
     padding: 1rem;
     z-index: 1000;
 }
+
+/* Adicionado z-index maior para os modais flutuantes */
+#bairro-modal, #user-modal, #uairango-modal {
+    z-index: 1100;
+}
+
 
 /* --- Modais de Formulário (Pequenos e Médios) --- */
 .modal-container .form-container {
@@ -181,11 +188,29 @@ button[type="submit"]:hover { background-color: #3182ce; }
 .qty-display { background-color: #4299e1; color: white; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; }
 .action-btn.retirou-btn, .action-btn.assign-btn { background-color: #c6f6d5; border-color: #9ae6b4; color: #2f855a; font-weight: 600; }
 .action-btn.retirou-btn:hover, .action-btn.assign-btn:hover { background-color: #9ae6b4; }
-.action-btn.view-btn, .action-btn.accept-uairango-btn { background-color: #48bb78; color: white; border-color: #38a169; font-weight: 600; }
-.action-btn.view-btn:hover, .action-btn.accept-uairango-btn:hover { background-color: #38a169; }
+.action-btn.view-btn { background-color: #a0aec0; color: white; border-color: #a0aec0; font-weight: 600; }
+.action-btn.view-btn:hover { background-color: #718096; }
+.action-btn.accept-uairango-btn { background-color: #48bb78; color: white; border-color: #38a169; font-weight: 600; }
+.action-btn.accept-uairango-btn:hover { background-color: #38a169; }
 .action-btn.reject-uairango-btn { background-color: #f56565; border-color: #e53e3e; color: white; font-weight: 600; }
 .action-btn.reject-uairango-btn:hover { background-color: #e53e3e; }
 .action-btn.cancel-btn:hover { background-color: #fed7d7; border-color: #fca5a5; }
+
+/* --- Modal de Detalhes do Pedido (Novo) --- */
+.view-pedido-modal-content { background-color: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+.view-pedido-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+.view-pedido-modal-body { padding: 2rem; overflow-y: auto; flex-grow: 1; background-color: #f7fafc;}
+.view-pedido-modal-footer { display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; padding: 1.5rem 2rem; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
+.pedido-details-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+.details-card { background-color: #fff; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem; }
+.details-card-header { padding: 0.75rem 1.25rem; border-bottom: 1px solid #e2e8f0; font-size: 1rem; background-color: #edf2f7; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+.details-card-body { padding: 1.25rem; }
+.details-card-body p { margin-bottom: 0.75rem; color: #4a5568; }
+.details-card-body p:last-child { margin-bottom: 0; }
+.details-card-body strong { color: #2d3748; }
+.gmaps-button { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1rem; padding: 0.6rem 1rem; background-color: #4299e1; color: white; text-decoration: none; border-radius: 8px; transition: background-color 0.2s; font-weight: 600; border: none; }
+.gmaps-button:hover { background-color: #3182ce; }
+
 
 /* --- Página de Motoqueiros --- */
 .page-container { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; height: 100%; }
