@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="auth.js"></script>
 </head>
-<body>
+<body class="motoqueiros-page"> <!-- CLASSE ADICIONADA -->
 
   <header>
     <nav>
@@ -33,12 +33,11 @@
         <!-- Os cards dos motoqueiros serão inseridos aqui pelo JavaScript -->
     </div>
 
+    <!-- ESTRUTURA DO PAINEL DE PEDIDOS SIMPLIFICADA -->
     <div class="orders-panel">
-        <div class="pedidos-container">
-            <h2>Pedidos do Dia</h2>
-            <div class="form-field"><input type="text" id="search-pedidos" placeholder="Pesquisar por cliente ou bairro..."></div>
-            <ul id="all-orders-list" class="pedidos-list"></ul>
-        </div>
+        <h2>Pedidos do Dia</h2>
+        <div class="form-field"><input type="text" id="search-pedidos" placeholder="Pesquisar por cliente ou bairro..."></div>
+        <ul id="all-orders-list" class="pedidos-list"></ul>
     </div>
   </main>
 

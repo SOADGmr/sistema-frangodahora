@@ -300,3 +300,20 @@ body.cliente-page, body.entregas-page, body.login-page { overflow-y: auto; }
 #details-modal .pedido-item.route-draggable { cursor: grab; }
 #details-modal .pedido-item.dragging-route { opacity: 0.5; background: #ebf8ff; border-style: dashed; }
 
+
+/* ====================================================== */
+/* 5. LAYOUTS DE PÁGINA ESPECÍFICOS (NOVO)                */
+/* ====================================================== */
+/* Corrige o layout da página de motoqueiros para permitir rolagem de painel independente */
+body.motoqueiros-page {
+  height: 100vh; /* Garante que o corpo ocupe toda a altura da tela */
+  overflow: hidden; /* Impede a rolagem do corpo da página */
+}
+
+body.motoqueiros-page main {
+  overflow: hidden; /* O main não deve rolar, mas sim os painéis dentro dele */
+}
+
+.orders-panel {
+  min-height: 0; /* Essencial para flexbox em containers com overflow */
+}
