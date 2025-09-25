@@ -204,6 +204,7 @@ router.post('/uairango/:id/aceitar', async (req, res) => {
     }
 });
 
+// ROTA ATUALIZADA PARA REJEITAR PEDIDO
 router.post('/uairango/:id/rejeitar', async (req, res) => {
     const { id } = req.params;
     const { motivo } = req.body;
@@ -226,17 +227,30 @@ router.post('/uairango/:id/rejeitar', async (req, res) => {
         
         const est = await findEstabelecimentoByPedido();
 
-        await uairangoService.rejectOrder(pedido.uairango_id_pedido, est.token_developer, motivo);
-
+        try {
+            // Tenta rejeitar no UaiRango
+            await uairangoService.rejectOrder(pedido.uairango_id_pedido, est.token_developer, motivo);
+        } catch (uairangoError) {
+            // Se o erro for que já não está pendente, ignoramos e seguimos para atualizar nosso BD.
+            // Se for outro erro, lançamos para o catch principal.
+            if (uairangoError.message && !uairangoError.message.includes('não está mais pendente')) {
+                throw uairangoError;
+            }
+            console.warn(`[UaiRango Sync] Pedido ${pedido.uairango_id_pedido} já não estava pendente. Sincronizando status local.`);
+        }
+        
+        // Independentemente do resultado (sucesso ou "já não pendente"), atualizamos o status local
         db.run("UPDATE pedidos SET status = 'Cancelado' WHERE id = ?", [id], function(err) {
             if (err) return res.status(500).json({ error: 'Erro ao atualizar status do pedido local.' });
-            res.json({ message: 'Pedido rejeitado com sucesso!' });
+            res.json({ message: 'Pedido rejeitado/sincronizado com sucesso!' });
         });
 
     } catch (error) {
+        // Captura outros erros (autenticação, erro de BD, etc.)
         res.status(500).json({ error: error.message });
     }
 });
+
 
 router.get('/:id', (req, res) => {
     const { id } = req.params;
@@ -367,4 +381,3 @@ router.put('/ordenar-rota', (req, res) => {
 });
 
 module.exports = router;
-
