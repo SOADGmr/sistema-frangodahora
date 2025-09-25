@@ -106,7 +106,7 @@
 
   <button id="fab" class="fab">Novo Pedido</button>
 
-  <!-- MODAL DE DETALHES DO PEDIDO (NOVO) -->
+  <!-- MODAL DE DETALHES DO PEDIDO (ATUALIZADO) -->
   <div id="view-pedido-modal-container" class="modal-container hidden">
       <div class="view-pedido-modal-content">
           <div class="view-pedido-modal-header">
@@ -116,34 +116,35 @@
           <div class="view-pedido-modal-body">
               <div class="pedido-details-grid">
                   <!-- Coluna de Dados do Pedido -->
-                  <div class="details-column">
-                      <div class="details-card">
-                          <h3 class="details-card-header">Dados do Pedido</h3>
-                          <div class="details-card-body">
-                              <p><strong>Horário do Pedido:</strong> <span id="view-horario">--:--</span></p>
-                              <p><strong>Prazo Limite:</strong> <span id="view-prazo">--:--</span></p>
-                              <p><strong>Tipo:</strong> <span id="view-tipo">--</span></p>
-                              <p><strong>Pagamento:</strong> <span id="view-pagamento">--</span></p>
-                              <p><strong>Quantidade:</strong> <span id="view-quantidade">--</span></p>
-                              <p><strong>Valor do Pedido:</strong> <span id="view-valor-pedido">R$ --,--</span></p>
-                              <p><strong>Taxa de Entrega:</strong> <span id="view-taxa">R$ --,--</span></p>
-                              <p><strong>Valor Total:</strong> <strong id="view-valor-total">R$ --,--</strong></p>
-                          </div>
+                  <div class="details-card">
+                      <h3 class="details-card-header">Dados do Pedido</h3>
+                      <div class="details-card-body">
+                          <p><strong>Horário do Pedido:</strong> <span id="view-horario">--:--</span></p>
+                          <p><strong>Prazo Limite:</strong> <span id="view-prazo">--:--</span></p>
+                          <p><strong>Tipo:</strong> <span id="view-tipo">--</span></p>
+                          <p><strong>Pagamento:</strong> <span id="view-pagamento">--</span></p>
+                          <p><strong>Quantidade:</strong> <span id="view-quantidade">--</span></p>
+                          <p><strong>Valor do Pedido:</strong> <span id="view-valor-pedido">R$ --,--</span></p>
+                          <p><strong>Taxa de Entrega:</strong> <span id="view-taxa">R$ --,--</span></p>
+                          <p><strong>Valor Total:</strong> <strong id="view-valor-total">R$ --,--</strong></p>
+                          <p id="view-entregador-wrapper" class="hidden"><strong>Entregador:</strong> <span id="view-entregador-nome">--</span></p>
                       </div>
-                      <div class="details-card">
-                          <h3 class="details-card-header">Dados do Cliente</h3>
-                          <div class="details-card-body">
-                              <p><strong>Nome:</strong> <span id="view-cliente-nome">--</span></p>
-                              <p><strong>Bairro:</strong> <span id="view-cliente-bairro">--</span></p>
-                              <p><strong>Endereço:</strong> <span id="view-cliente-endereco">--</span></p>
-                              <p><strong>Referência:</strong> <span id="view-cliente-referencia">--</span></p>
-                              <a href="#" id="view-maps-link" target="_blank" class="gmaps-button">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                      <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
-                                  </svg>
-                                  Localizar no Google Maps
-                              </a>
-                          </div>
+                  </div>
+                  <!-- Coluna de Dados do Cliente -->
+                  <div class="details-card">
+                      <h3 class="details-card-header">Dados do Cliente</h3>
+                      <div class="details-card-body">
+                          <p><strong>Nome:</strong> <span id="view-cliente-nome">--</span></p>
+                          <p><strong>Telefone:</strong> <span id="view-cliente-telefone">--</span></p>
+                          <p><strong>Bairro:</strong> <span id="view-cliente-bairro">--</span></p>
+                          <p><strong>Endereço:</strong> <span id="view-cliente-endereco">--</span></p>
+                          <p><strong>Referência:</strong> <span id="view-cliente-referencia">--</span></p>
+                          <a href="#" id="view-maps-link" target="_blank" class="gmaps-button">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                  <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
+                              </svg>
+                              Localizar no Google Maps
+                          </a>
                       </div>
                   </div>
               </div>
@@ -530,13 +531,24 @@
             document.getElementById('view-taxa').textContent = `R$ ${pedido.taxa_entrega.toFixed(2)}`;
             document.getElementById('view-valor-total').textContent = `R$ ${pedido.preco_total.toFixed(2)}`;
 
+            // Adiciona o nome do entregador se houver
+            const entregadorWrapper = document.getElementById('view-entregador-wrapper');
+            if (tipo === 'Delivery' && pedido.motoqueiro_nome) {
+                document.getElementById('view-entregador-nome').textContent = pedido.motoqueiro_nome;
+                entregadorWrapper.classList.remove('hidden');
+            } else {
+                entregadorWrapper.classList.add('hidden');
+            }
+
             document.getElementById('view-cliente-nome').textContent = pedido.cliente_nome;
+            // Adiciona o telefone do cliente
+            document.getElementById('view-cliente-telefone').textContent = pedido.cliente_telefone || 'Não informado';
             document.getElementById('view-cliente-bairro').textContent = pedido.cliente_bairro || 'N/A';
             document.getElementById('view-cliente-endereco').textContent = tipo === 'Retirada' ? 'Retirada no Balcão' : pedido.cliente_endereco;
             document.getElementById('view-cliente-referencia').textContent = pedido.cliente_referencia || 'Nenhuma';
             
             const mapsLink = document.getElementById('view-maps-link');
-            if (tipo === 'Delivery') {
+            if (tipo === 'Delivery' && pedido.cliente_endereco !== 'Retirada') {
                 mapsLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pedido.cliente_endereco + ', ' + pedido.cliente_bairro)}`;
                 mapsLink.style.display = 'flex';
             } else {
@@ -830,3 +842,4 @@
 
 </body>
 </html>
+

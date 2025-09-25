@@ -240,7 +240,13 @@ router.post('/uairango/:id/rejeitar', async (req, res) => {
 
 router.get('/:id', (req, res) => {
     const { id } = req.params;
-    db.get("SELECT * FROM pedidos WHERE id = ?", [id], (err, row) => {
+    const sql = `
+        SELECT p.*, m.nome as motoqueiro_nome 
+        FROM pedidos p 
+        LEFT JOIN motoqueiros m ON p.motoqueiro_id = m.id
+        WHERE p.id = ?
+    `;
+    db.get(sql, [id], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: "Pedido não encontrado." });
         res.json(row);
@@ -361,3 +367,4 @@ router.put('/ordenar-rota', (req, res) => {
 });
 
 module.exports = router;
+

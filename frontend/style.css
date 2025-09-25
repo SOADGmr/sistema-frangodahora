@@ -118,7 +118,7 @@ td .action-buttons { display: flex; gap: 0.5rem; }
 .form-container {
     padding: 2rem;
 }
-.close-btn { position: absolute; top: 10px; right: 15px; font-size: 2.5rem; color: #aaa; cursor: pointer; background: none; border: none; line-height: 1; }
+.close-btn { position: relative; top: -5px; right: 15px; font-size: 2.5rem; color: #aaa; cursor: pointer; background: none; border: none; line-height: 1; }
 .close-btn:hover { color: #333; }
 #pedido-modal-container .form-container { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 #estoque-modal-container .form-container, #assign-modal-container .form-container, #start-day-modal .form-container, #adjust-chicken-modal .form-container {
@@ -196,13 +196,13 @@ button[type="submit"]:hover { background-color: #3182ce; }
 .action-btn.reject-uairango-btn:hover { background-color: #e53e3e; }
 .action-btn.cancel-btn:hover { background-color: #fed7d7; border-color: #fca5a5; }
 
-/* --- Modal de Detalhes do Pedido (Novo) --- */
-.view-pedido-modal-content { background-color: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+/* --- Modal de Detalhes do Pedido (ATUALIZADO) --- */
+.view-pedido-modal-content { background-color: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
 .view-pedido-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
 .view-pedido-modal-body { padding: 2rem; overflow-y: auto; flex-grow: 1; background-color: #f7fafc;}
 .view-pedido-modal-footer { display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; padding: 1.5rem 2rem; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
-.pedido-details-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
-.details-card { background-color: #fff; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem; }
+.pedido-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.details-card { background-color: #fff; border-radius: 8px; border: 1px solid #e2e8f0; }
 .details-card-header { padding: 0.75rem 1.25rem; border-bottom: 1px solid #e2e8f0; font-size: 1rem; background-color: #edf2f7; border-top-left-radius: 8px; border-top-right-radius: 8px; }
 .details-card-body { padding: 1.25rem; }
 .details-card-body p { margin-bottom: 0.75rem; color: #4a5568; }
