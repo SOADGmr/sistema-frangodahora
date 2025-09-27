@@ -287,11 +287,23 @@
         clienteBairroInput: document.getElementById('cliente_bairro'),
         bairrosDatalist: document.getElementById('bairros-datalist'),
         logoutBtn: document.getElementById('logout-btn'),
-        // View Modal Elements
         viewPedidoModal: document.getElementById('view-pedido-modal-container'),
         closeViewPedidoModalBtn: document.getElementById('close-view-pedido-modal-btn'),
         viewModalTitle: document.getElementById('view-modal-title'),
         viewModalFooter: document.getElementById('view-modal-footer'),
+    };
+
+    const triggerUaiRangoCheck = () => {
+        console.log('Acionando verificação do UaiRango...');
+        fetch(`${API_URL}/uairango/check`, { method: 'POST' })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Solicitação de verificação UaiRango enviada.');
+                } else {
+                    console.error('Falha ao solicitar verificação do UaiRango.');
+                }
+            })
+            .catch(error => console.error('Erro de rede ao acionar a verificação do UaiRango:', error));
     };
     
     const normalizarTexto = (texto) => {
@@ -401,28 +413,19 @@
             tr.dataset.pedidoId = p.id;
             tr.dataset.horarioPedido = p.horario_pedido;
             tr.dataset.tempoPrevisto = p.tempo_previsto;
-
             const isUaiRangoPendente = p.status === 'Pendente UaiRango';
             let statusDisplay = p.status;
             let statusClass = p.status.toLowerCase().replace(/ /g, '-');
-            
             if (isUaiRangoPendente) {
                 tr.className = 'status-row-pendente-uairango';
             } else {
                 tr.className = `status-row-${statusClass}`;
             }
-
             let actionButtonsHTML = '';
             const totalFrangos = p.quantidade_frangos + (p.meio_frango ? 0.5 : 0);
-
-            // Botão Ver Pedido sempre aparece
             actionButtonsHTML += `<button class="action-btn view-btn" data-id="${p.id}">Ver Pedido</button>`;
-
             if (isUaiRangoPendente) {
-                actionButtonsHTML += `
-                    <button class="action-btn accept-uairango-btn" data-id="${p.id}">Aceitar</button>
-                    <button class="action-btn reject-uairango-btn" data-id="${p.id}">Rejeitar</button>
-                `;
+                actionButtonsHTML += `<button class="action-btn accept-uairango-btn" data-id="${p.id}">Aceitar</button><button class="action-btn reject-uairango-btn" data-id="${p.id}">Rejeitar</button>`;
             } else if (p.status === 'Pendente') {
                 if (p.cliente_endereco === 'Retirada') {
                     actionButtonsHTML += `<button class="action-btn retirou-btn" data-id="${p.id}">Retirou</button>`;
@@ -433,27 +436,15 @@
             } else if (p.status === 'Em Rota') {
                  actionButtonsHTML += `<button class="action-btn assign-btn" data-id="${p.id}" data-qtd="${totalFrangos}">Reatribuir</button>`;
                  actionButtonsHTML += `<button class="action-btn cancel-btn" data-id="${p.id}">Cancelar</button>`;
-            } else if (p.status === 'Cancelado' || p.status === 'Entregue') {
-                // Não mostra outros botões se cancelado ou entregue, apenas "Ver Pedido"
             }
-
-
             const prazoHtml = (p.status === 'Em Rota' || p.status === 'Pendente' || p.status === 'Pendente UaiRango') ? calcularPrazo(p.horario_pedido, p.tempo_previsto) : '---';
             const bairroDisplay = p.cliente_endereco === 'Retirada' ? 'Retirada no Local' : p.cliente_bairro || 'N/A';
             const clienteInfo = p.cliente_nome ? `${p.uairango_id_pedido ? 'UaiRango | ' : ''}${p.cliente_nome}<br><small>${p.cliente_telefone || ''}</small>` : 'N/A';
-
             tr.innerHTML = `
-                <td class="col-prazo">${prazoHtml}</td>
-                <td class="col-cliente">${clienteInfo}</td>
-                <td class="col-bairro">${bairroDisplay}</td>
-                <td class="col-qtd">${totalFrangos}</td>
-                <td class="col-valor">R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</td>
+                <td class="col-prazo">${prazoHtml}</td><td class="col-cliente">${clienteInfo}</td><td class="col-bairro">${bairroDisplay}</td>
+                <td class="col-qtd">${totalFrangos}</td><td class="col-valor">R$ ${p.preco_total ? p.preco_total.toFixed(2) : '0.00'}</td>
                 <td class="col-status"><span class="status status-${statusClass}">${statusDisplay}</span></td>
-                <td class="col-acoes">
-                    <div class="action-buttons">
-                        ${actionButtonsHTML}
-                    </div>
-                </td>`;
+                <td class="col-acoes"><div class="action-buttons">${actionButtonsHTML}</div></td>`;
             elements.pedidosTbody.appendChild(tr);
         });
         startPrazoUpdater();
@@ -511,27 +502,19 @@
             const pedido = await fetchJSON(`${API_URL}/pedidos/${pedidoId}`);
             
             elements.viewModalTitle.textContent = `Informações do pedido #${pedido.id}`;
-
             const horarioPedido = new Date(pedido.horario_pedido);
             const prazoLimite = new Date(horarioPedido.getTime() + (pedido.tempo_previsto || 0) * 60000);
-
             document.getElementById('view-horario').textContent = horarioPedido.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             document.getElementById('view-prazo').textContent = prazoLimite.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
             const tipo = pedido.cliente_endereco === 'Retirada' ? 'Retirada' : 'Delivery';
             document.getElementById('view-tipo').textContent = tipo;
-            
             document.getElementById('view-pagamento').textContent = pedido.forma_pagamento;
-            
             const totalFrangos = pedido.quantidade_frangos + (pedido.meio_frango ? 0.5 : 0);
             document.getElementById('view-quantidade').textContent = `${totalFrangos} frango(s)`;
-
             const valorPedido = pedido.preco_total - pedido.taxa_entrega;
             document.getElementById('view-valor-pedido').textContent = `R$ ${valorPedido.toFixed(2)}`;
             document.getElementById('view-taxa').textContent = `R$ ${pedido.taxa_entrega.toFixed(2)}`;
             document.getElementById('view-valor-total').textContent = `R$ ${pedido.preco_total.toFixed(2)}`;
-
-            // Adiciona o nome do entregador se houver
             const entregadorWrapper = document.getElementById('view-entregador-wrapper');
             if (tipo === 'Delivery' && pedido.motoqueiro_nome) {
                 document.getElementById('view-entregador-nome').textContent = pedido.motoqueiro_nome;
@@ -539,14 +522,11 @@
             } else {
                 entregadorWrapper.classList.add('hidden');
             }
-
             document.getElementById('view-cliente-nome').textContent = pedido.cliente_nome;
-            // Adiciona o telefone do cliente
             document.getElementById('view-cliente-telefone').textContent = pedido.cliente_telefone || 'Não informado';
             document.getElementById('view-cliente-bairro').textContent = pedido.cliente_bairro || 'N/A';
             document.getElementById('view-cliente-endereco').textContent = tipo === 'Retirada' ? 'Retirada no Balcão' : pedido.cliente_endereco;
             document.getElementById('view-cliente-referencia').textContent = pedido.cliente_referencia || 'Nenhuma';
-            
             const mapsLink = document.getElementById('view-maps-link');
             if (tipo === 'Delivery' && pedido.cliente_endereco !== 'Retirada') {
                 mapsLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pedido.cliente_endereco + ', ' + pedido.cliente_bairro)}`;
@@ -554,45 +534,22 @@
             } else {
                 mapsLink.style.display = 'none';
             }
-
-            // --- Lógica dos botões do rodapé ---
             elements.viewModalFooter.innerHTML = '';
             if (pedido.status === 'Pendente UaiRango') {
-                elements.viewModalFooter.innerHTML = `
-                    <button class="action-btn reject-uairango-btn" data-id="${pedido.id}">Rejeitar</button>
-                    <button class="action-btn accept-uairango-btn" data-id="${pedido.id}">Aceitar Pedido</button>
-                `;
+                elements.viewModalFooter.innerHTML = `<button class="action-btn reject-uairango-btn" data-id="${pedido.id}">Rejeitar</button><button class="action-btn accept-uairango-btn" data-id="${pedido.id}">Aceitar Pedido</button>`;
             } else if (pedido.status !== 'Cancelado' && pedido.status !== 'Entregue') {
                 const atribuirBtnText = pedido.motoqueiro_id ? 'Reatribuir' : 'Atribuir';
-                elements.viewModalFooter.innerHTML = `
-                    <button class="action-btn" onclick="openEditModalFromView(${pedido.id})">Editar</button>
-                    <button class="action-btn cancel-btn" onclick="handleCancelFromView(${pedido.id})">Cancelar</button>
-                    <button class="action-btn assign-btn" onclick="openAssignModalFromView(${pedido.id}, ${totalFrangos})">${atribuirBtnText}</button>
-                `;
+                elements.viewModalFooter.innerHTML = `<button class="action-btn" onclick="openEditModalFromView(${pedido.id})">Editar</button><button class="action-btn cancel-btn" onclick="handleCancelFromView(${pedido.id})">Cancelar</button><button class="action-btn assign-btn" onclick="openAssignModalFromView(${pedido.id}, ${totalFrangos})">${atribuirBtnText}</button>`;
             }
-
             openModal(elements.viewPedidoModal);
-
         } catch (error) {
             alert(`Erro ao buscar detalhes do pedido: ${error.message}`);
         }
     };
 
-    // Funções auxiliares para chamar handlers a partir do modal de visualização
-    window.openEditModalFromView = async (pedidoId) => {
-        const pedido = await fetchJSON(`${API_URL}/pedidos/${pedidoId}`);
-        closeModal(elements.viewPedidoModal);
-        openPedidoModal('edit', pedido);
-    };
-    window.handleCancelFromView = (pedidoId) => {
-        closeModal(elements.viewPedidoModal);
-        document.querySelector(`.cancel-btn[data-id='${pedidoId}']`).click();
-    };
-    window.openAssignModalFromView = (pedidoId, qtd) => {
-        closeModal(elements.viewPedidoModal);
-        openAssignModal(pedidoId, qtd);
-    };
-
+    window.openEditModalFromView = async (pedidoId) => { const pedido = await fetchJSON(`${API_URL}/pedidos/${pedidoId}`); closeModal(elements.viewPedidoModal); openPedidoModal('edit', pedido); };
+    window.handleCancelFromView = (pedidoId) => { closeModal(elements.viewPedidoModal); document.querySelector(`.cancel-btn[data-id='${pedidoId}']`).click(); };
+    window.openAssignModalFromView = (pedidoId, qtd) => { closeModal(elements.viewPedidoModal); openAssignModal(pedidoId, qtd); };
     
     const openAssignModal = async (pedidoId, frangosPedido) => {
         elements.assignPedidoId.textContent = `#${pedidoId}`;
@@ -651,127 +608,17 @@
         elements.precoTotalInput.value = total.toFixed(2);
     };
     
-    const handleFormSubmit = async (e) => { 
-        e.preventDefault(); 
-        const id = elements.pedidoIdInput.value; 
-        const isEditMode = !!id; 
-        
-        const quantidadePedido = parseInt(document.getElementById('quantidade_frangos').value) + (document.getElementById('meio_frango').checked ? 0.5 : 0);
-        if (!isEditMode && quantidadePedido > estoqueAtual) {
-            elements.pedidoFormMessage.textContent = `Erro: Estoque insuficiente. Restam apenas ${estoqueAtual} frangos.`;
-            elements.pedidoFormMessage.className = 'form-message error';
-            return;
-        }
-
-        const url = isEditMode ? `${API_URL}/pedidos/${id}` : `${API_URL}/pedidos`; 
-        const method = isEditMode ? 'PUT' : 'POST'; 
-        const dadosPedido = { 
-            cliente_nome: document.getElementById('cliente_nome').value, 
-            cliente_telefone: document.getElementById('cliente_telefone').value, 
-            quantidade_frangos: parseInt(document.getElementById('quantidade_frangos').value), 
-            preco_total: parseFloat(document.getElementById('preco_total').value), 
-            forma_pagamento: document.getElementById('forma_pagamento').value,
-            picado: document.getElementById('picado').checked,
-            meio_frango: document.getElementById('meio_frango').checked,
-            taxa_entrega: parseFloat(document.getElementById('taxa_entrega').value) || 0,
-            cliente_referencia: document.getElementById('cliente_referencia').value,
-            observacao: document.getElementById('observacao').value
-        }; 
-        if (elements.tipoPedidoSelect.value === 'Retirada') { 
-            dadosPedido.canal_venda = 'Porta'; 
-            dadosPedido.cliente_endereco = 'Retirada'; 
-            dadosPedido.cliente_bairro = ''; 
-            dadosPedido.taxa_entrega = 0;
-            dadosPedido.tempo_previsto = parseInt(elements.tempoRetiradaInput.value, 10);
-        } else { 
-            dadosPedido.canal_venda = elements.canalVendaSelect.value; 
-            dadosPedido.cliente_endereco = document.getElementById('cliente_endereco').value; 
-            dadosPedido.cliente_bairro = document.getElementById('cliente_bairro').value; 
-            dadosPedido.tempo_previsto = parseInt(elements.tempoEntregaInput.value, 10);
-        } 
-        try { 
-            const result = await fetchJSON(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dadosPedido), }); 
-            elements.pedidoFormMessage.textContent = result.message; 
-            elements.pedidoFormMessage.className = 'form-message success'; 
-            setTimeout(() => { closeModal(elements.pedidoModal); fetchDataForDate(selectedDate); fetchBairros(); }, 1000); 
-        } catch (error) { 
-            elements.pedidoFormMessage.textContent = `Erro: ${error.message}`; 
-            elements.pedidoFormMessage.className = 'form-message error'; 
-        } 
-    };
-
-    const handleAcceptUaiRango = async (id) => {
-        try {
-            await fetchJSON(`${API_URL}/pedidos/uairango/${id}/aceitar`, { method: 'POST' });
-            alert('Pedido do UaiRango aceito!');
-            fetchDataForDate(selectedDate);
-        } catch (error) {
-            alert(`Erro ao aceitar pedido: ${error.message}`);
-        }
-    };
-
-    const handleRejectUaiRango = async (id) => {
-        const motivo = prompt('Por favor, digite o motivo para rejeitar o pedido:');
-        if (motivo) {
-            try {
-                await fetchJSON(`${API_URL}/pedidos/uairango/${id}/rejeitar`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ motivo })
-                });
-                alert('Pedido do UaiRango rejeitado!');
-                fetchDataForDate(selectedDate);
-            } catch (error) {
-                alert(`Erro ao rejeitar pedido: ${error.message}`);
-            }
-        }
-    };
-    
-    const handleTableClick = async (e) => {
-        const target = e.target.closest('.action-btn');
-        if (!target) return;
-
-        const id = target.dataset.id;
-        if (!id) return;
-        
-        if (target.classList.contains('view-btn')) { openViewPedidoModal(id); }
-        if (target.classList.contains('accept-uairango-btn')) { handleAcceptUaiRango(id); }
-        if (target.classList.contains('reject-uairango-btn')) { handleRejectUaiRango(id); }
-        if (target.classList.contains('assign-btn')) { const qtd = parseFloat(target.dataset.qtd); openAssignModal(id, qtd); }
-        if (target.classList.contains('cancel-btn')) { if (target.disabled) return; if (confirm(`Tem certeza que deseja cancelar o pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/cancelar`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao cancelar pedido: ${error.message}`); } } }
-        if (target.classList.contains('retirou-btn')) { if (confirm(`Confirmar a retirada do pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/retirou`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao confirmar retirada: ${error.message}`); } } }
-    };
-
-    const handleSaveSettings = async () => {
-        const precoFrango = parseFloat(elements.precoFrangoInput.value).toFixed(2);
-        const tempoEntrega = parseInt(elements.tempoEntregaInput.value, 10);
-        const tempoRetirada = parseInt(elements.tempoRetiradaInput.value, 10);
-
-        try {
-            await Promise.all([
-                fetchJSON(`${API_URL}/configuracoes/preco_frango`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: precoFrango }) }),
-                fetchJSON(`${API_URL}/configuracoes/tempo_entrega`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: tempoEntrega }) }),
-                fetchJSON(`${API_URL}/configuracoes/tempo_retirada`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: tempoRetirada }) })
-            ]);
-            alert('Configurações salvas com sucesso!');
-        } catch (error) {
-            alert(`Erro ao salvar configurações: ${error.message}`);
-        }
-    };
-
-    const handleEstoqueSubmit = async (e) => { e.preventDefault(); const quantidade = Number(document.getElementById('quantidade_inicial').value); try { const result = await fetchJSON(`${API_URL}/estoque`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantidade, data: formatDateToYYYYMMDD(selectedDate) }) }); elements.estoqueFormMessage.textContent = result.message; elements.estoqueFormMessage.className = 'form-message success'; setTimeout(() => { closeModal(elements.estoqueModal); fetchDataForDate(selectedDate); }, 1000); } catch (error) { elements.estoqueFormMessage.textContent = `Erro: ${error.message}`; elements.estoqueFormMessage.className = 'form-message error'; } };
+    const handleFormSubmit = async (e) => { e.preventDefault(); const id = elements.pedidoIdInput.value; const isEditMode = !!id; const quantidadePedido = parseInt(document.getElementById('quantidade_frangos').value) + (document.getElementById('meio_frango').checked ? 0.5 : 0); if (!isEditMode && quantidadePedido > estoqueAtual) { elements.pedidoFormMessage.textContent = `Erro: Estoque insuficiente. Restam apenas ${estoqueAtual} frangos.`; elements.pedidoFormMessage.className = 'form-message error'; return; } const url = isEditMode ? `${API_URL}/pedidos/${id}` : `${API_URL}/pedidos`; const method = isEditMode ? 'PUT' : 'POST'; const dadosPedido = { cliente_nome: document.getElementById('cliente_nome').value, cliente_telefone: document.getElementById('cliente_telefone').value, quantidade_frangos: parseInt(document.getElementById('quantidade_frangos').value), preco_total: parseFloat(document.getElementById('preco_total').value), forma_pagamento: document.getElementById('forma_pagamento').value, picado: document.getElementById('picado').checked, meio_frango: document.getElementById('meio_frango').checked, taxa_entrega: parseFloat(document.getElementById('taxa_entrega').value) || 0, cliente_referencia: document.getElementById('cliente_referencia').value, observacao: document.getElementById('observacao').value }; if (elements.tipoPedidoSelect.value === 'Retirada') { dadosPedido.canal_venda = 'Porta'; dadosPedido.cliente_endereco = 'Retirada'; dadosPedido.cliente_bairro = ''; dadosPedido.taxa_entrega = 0; dadosPedido.tempo_previsto = parseInt(elements.tempoRetiradaInput.value, 10); } else { dadosPedido.canal_venda = elements.canalVendaSelect.value; dadosPedido.cliente_endereco = document.getElementById('cliente_endereco').value; dadosPedido.cliente_bairro = document.getElementById('cliente_bairro').value; dadosPedido.tempo_previsto = parseInt(elements.tempoEntregaInput.value, 10); } try { const result = await fetchJSON(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dadosPedido), }); elements.pedidoFormMessage.textContent = result.message; elements.pedidoFormMessage.className = 'form-message success'; setTimeout(() => { closeModal(elements.pedidoModal); fetchDataForDate(selectedDate); }, 1000); } catch (error) { elements.pedidoFormMessage.textContent = `Erro: ${error.message}`; elements.pedidoFormMessage.className = 'form-message error'; } };
+    const handleAcceptUaiRango = async (id) => { try { await fetchJSON(`${API_URL}/pedidos/uairango/${id}/aceitar`, { method: 'POST' }); alert('Pedido do UaiRango aceito!'); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao aceitar pedido: ${error.message}`); } };
+    const handleRejectUaiRango = async (id) => { const motivo = prompt('Por favor, digite o motivo para rejeitar o pedido:'); if (motivo) { try { await fetchJSON(`${API_URL}/pedidos/uairango/${id}/rejeitar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motivo }) }); alert('Pedido do UaiRango rejeitado!'); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao rejeitar pedido: ${error.message}`); } } };
+    const handleTableClick = async (e) => { const target = e.target.closest('.action-btn'); if (!target) return; const id = target.dataset.id; if (!id) return; if (target.classList.contains('view-btn')) { openViewPedidoModal(id); } if (target.classList.contains('accept-uairango-btn')) { handleAcceptUaiRango(id); } if (target.classList.contains('reject-uairango-btn')) { handleRejectUaiRango(id); } if (target.classList.contains('assign-btn')) { const qtd = parseFloat(target.dataset.qtd); openAssignModal(id, qtd); } if (target.classList.contains('cancel-btn')) { if (target.disabled) return; if (confirm(`Tem certeza que deseja cancelar o pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/cancelar`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao cancelar pedido: ${error.message}`); } } } if (target.classList.contains('retirou-btn')) { if (confirm(`Confirmar a retirada do pedido #${id}?`)) { try { await fetchJSON(`${API_URL}/pedidos/${id}/retirou`, { method: 'PUT' }); fetchDataForDate(selectedDate); } catch (error) { alert(`Erro ao confirmar retirada: ${error.message}`); } } } };
+    const handleSaveSettings = async () => { const precoFrango = parseFloat(elements.precoFrangoInput.value).toFixed(2); const tempoEntrega = parseInt(elements.tempoEntregaInput.value, 10); const tempoRetirada = parseInt(elements.tempoRetiradaInput.value, 10); try { await Promise.all([ fetchJSON(`${API_URL}/configuracoes/preco_frango`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: precoFrango }) }), fetchJSON(`${API_URL}/configuracoes/tempo_entrega`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: tempoEntrega }) }), fetchJSON(`${API_URL}/configuracoes/tempo_retirada`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: tempoRetirada }) }) ]); alert('Configurações salvas com sucesso!'); triggerUaiRangoCheck(); } catch (error) { alert(`Erro ao salvar configurações: ${error.message}`); } };
+    const handleEstoqueSubmit = async (e) => { e.preventDefault(); const quantidade = Number(document.getElementById('quantidade_inicial').value); try { const result = await fetchJSON(`${API_URL}/estoque`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantidade, data: formatDateToYYYYMMDD(selectedDate) }) }); elements.estoqueFormMessage.textContent = result.message; elements.estoqueFormMessage.className = 'form-message success'; setTimeout(() => { closeModal(elements.estoqueModal); fetchDataForDate(selectedDate); triggerUaiRangoCheck(); }, 1000); } catch (error) { elements.estoqueFormMessage.textContent = `Erro: ${error.message}`; elements.estoqueFormMessage.className = 'form-message error'; } };
     const handleAssignSubmit = async (e) => { e.preventDefault(); const pedidoId = e.target.dataset.pedidoId; const motoqueiroId = elements.motoqueiroSelect.value; if (!motoqueiroId) { elements.assignFormMessage.textContent = 'Por favor, selecione um motoqueiro.'; elements.assignFormMessage.className = 'form-message error'; return; } try { const result = await fetchJSON(`${API_URL}/pedidos/${pedidoId}/atribuir`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motoqueiroId }), }); elements.assignFormMessage.textContent = result.message; elements.assignFormMessage.className = 'form-message success'; setTimeout(() => { closeModal(elements.assignModal); fetchDataForDate(selectedDate); }, 1000); } catch (error) { elements.assignFormMessage.textContent = `Erro: ${error.message}`; elements.assignFormMessage.className = 'form-message error'; } };
     const changeDate = (days) => { selectedDate.setDate(selectedDate.getDate() + days); fetchDataForDate(selectedDate); };
 
     function setupEventListeners() {
-        elements.fab.addEventListener('click', () => {
-            if (estoqueAtual <= 0) {
-                alert('Estoque esgotado! Não é possível criar novos pedidos. Por favor, atualize o estoque inicial do dia.');
-                return;
-            }
-            openPedidoModal('create');
-        });
-
+        elements.fab.addEventListener('click', () => { if (estoqueAtual <= 0) { alert('Estoque esgotado! Não é possível criar novos pedidos.'); return; } openPedidoModal('create'); });
         elements.closePedidoModalBtn.addEventListener('click', () => closeModal(elements.pedidoModal));
         elements.pedidoModal.addEventListener('click', (e) => e.target === elements.pedidoModal && closeModal(elements.pedidoModal));
         elements.updateStockBtn.addEventListener('click', () => openModal(elements.estoqueModal));
@@ -791,42 +638,39 @@
         elements.nextDayBtn.addEventListener('click', () => changeDate(1));
         elements.meioFrangoCheckbox.addEventListener('change', updateTotalPrice);
         elements.taxaEntregaInput.addEventListener('input', updateTotalPrice);
-        
-        elements.clienteBairroInput.addEventListener('input', (e) => {
-            const bairroDigitadoNormalizado = normalizarTexto(e.target.value);
-            const bairroSelecionado = bairrosConfig.find(b => normalizarTexto(b.bairro) === bairroDigitadoNormalizado);
-            if (bairroSelecionado) {
-                elements.taxaEntregaInput.value = bairroSelecionado.taxa.toFixed(2);
-                updateTotalPrice();
-            }
-        });
-        
-        elements.logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            logout();
-        });
-
-        // Event Listeners for View Modal
+        elements.clienteBairroInput.addEventListener('input', (e) => { const bairroDigitadoNormalizado = normalizarTexto(e.target.value); const bairroSelecionado = bairrosConfig.find(b => normalizarTexto(b.bairro) === bairroDigitadoNormalizado); if (bairroSelecionado) { elements.taxaEntregaInput.value = bairroSelecionado.taxa.toFixed(2); updateTotalPrice(); } });
+        elements.logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
         elements.closeViewPedidoModalBtn.addEventListener('click', () => closeModal(elements.viewPedidoModal));
-        elements.viewPedidoModal.addEventListener('click', (e) => {
-            if (e.target === elements.viewPedidoModal) {
-                closeModal(elements.viewPedidoModal);
-            }
-        });
+        elements.viewPedidoModal.addEventListener('click', (e) => { if (e.target === elements.viewPedidoModal) { closeModal(elements.viewPedidoModal); } });
+        elements.viewModalFooter.addEventListener('click', (e) => { const target = e.target.closest('.action-btn'); if (!target) return; const id = target.dataset.id; if (target.classList.contains('accept-uairango-btn')) { closeModal(elements.viewPedidoModal); handleAcceptUaiRango(id); } if (target.classList.contains('reject-uairango-btn')) { closeModal(elements.viewPedidoModal); handleRejectUaiRango(id); } });
+    }
 
-        elements.viewModalFooter.addEventListener('click', (e) => {
-            const target = e.target.closest('.action-btn');
-            if (!target) return;
-            const id = target.dataset.id;
-            if (target.classList.contains('accept-uairango-btn')) {
-                closeModal(elements.viewPedidoModal);
-                handleAcceptUaiRango(id);
+    // NOVA FUNÇÃO: Configura a conexão SSE
+    function setupSSE() {
+        const eventSource = new EventSource(`${API_URL}/events`);
+
+        eventSource.onmessage = function(event) {
+            console.log("SSE message received:", event.data);
+            const data = JSON.parse(event.data);
+
+            // Verifica se o evento é de atualização de pedidos
+            if (data.type === 'update-pedidos') {
+                console.log("Evento de atualização de pedido recebido. Verificando data...");
+                
+                // Atualiza a tabela APENAS se o usuário estiver visualizando os pedidos do dia atual
+                if (formatDisplayDate(selectedDate) === "Hoje") {
+                    console.log("Atualizando a lista de pedidos de hoje.");
+                    fetchDataForDate(selectedDate);
+                } else {
+                    console.log("Visualizando um dia passado. A atualização automática da tabela foi ignorada.");
+                }
             }
-            if (target.classList.contains('reject-uairango-btn')) {
-                closeModal(elements.viewPedidoModal);
-                handleRejectUaiRango(id);
-            }
-        });
+        };
+
+        eventSource.onerror = function(err) {
+            console.error("EventSource falhou:", err);
+            // O navegador tentará reconectar automaticamente.
+        };
     }
 
     function init() { 
@@ -836,6 +680,8 @@
         fetchSettings();
         fetchBairros();
         setupEventListeners(); 
+        triggerUaiRangoCheck(); 
+        setupSSE(); // Inicia a escuta por eventos do servidor
     }
     document.addEventListener('DOMContentLoaded', init);
   </script>

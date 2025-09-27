@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { initializeDatabase } = require('./db'); // MUDANÇA: Importa a função de inicialização
+const { initializeDatabase } = require('./db'); 
 
 // Importa os arquivos de rotas
 const pedidosRoutes = require('./routes/pedidos');
@@ -9,7 +9,9 @@ const motoqueirosRoutes = require('./routes/motoqueiros');
 const estoqueRoutes = require('./routes/estoque');
 const configuracoesRoutes = require('./routes/configuracoes');
 const authRoutes = require('./routes/auth');
+const uairangoRoutes = require('./routes/uairango'); 
 const uairangoService = require('./uairango-service');
+const sseService = require('./sse-service');
 
 const app = express();
 
@@ -20,6 +22,22 @@ app.use(express.json());
 const frontendPath = path.resolve(__dirname, '..', 'frontend');
 app.use(express.static(frontendPath));
 
+// === ROTA PARA SERVER-SENT EVENTS (SSE) ===
+app.get('/api/events', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.flushHeaders(); 
+
+    sseService.addClient(res);
+
+    res.write('data: {"type": "connected"}\n\n');
+
+    req.on('close', () => {
+        sseService.removeClient(res);
+    });
+});
+
 
 // === DELEGAÇÃO DAS ROTAS DA API ===
 app.use('/api/pedidos', pedidosRoutes);
@@ -27,6 +45,7 @@ app.use('/api/motoqueiros', motoqueirosRoutes);
 app.use('/api/estoque', estoqueRoutes);
 app.use('/api/configuracoes', configuracoesRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/uairango', uairangoRoutes);
 
 // Rota principal da API (opcional)
 app.get('/api', (req, res) => {
@@ -35,18 +54,16 @@ app.get('/api', (req, res) => {
 
 const PORT = 3000;
 
-// MUDANÇA: Inicializa o banco de dados ANTES de iniciar o servidor
 initializeDatabase((err) => {
     if (err) {
         console.error("Falha ao inicializar o banco de dados. O servidor não será iniciado.", err);
-        process.exit(1); // Encerra o processo se o DB falhar
+        process.exit(1);
     }
 
-    // O banco de dados está pronto, agora podemos iniciar o servidor e os serviços
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);
-      
-      // Inicia o serviço de busca de pedidos do UaiRango
-      uairangoService.startPolling(1);
+      // ATUALIZADO: O valor 1 (minuto) foi alterado para 0.33 (~20 segundos)
+      uairangoService.startPolling(0.33); 
     });
 });
+

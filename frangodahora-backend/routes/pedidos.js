@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db').db;
 const uairangoService = require('../uairango-service');
+const sseService = require('../sse-service'); // Importa o serviço de eventos
 
 // Rota para criar um novo pedido (manual ou pelo cliente)
 router.post('/', (req, res) => {
@@ -12,7 +13,6 @@ router.post('/', (req, res) => {
     } = req.body;
 
     const quantidadePedido = Number(quantidade_frangos) + (meio_frango ? 0.5 : 0);
-    
     const serverLocalDate = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
     Promise.all([
@@ -30,13 +30,10 @@ router.post('/', (req, res) => {
         })
     ]).then(([estoqueInicial, totalVendido]) => {
         const estoqueAtual = estoqueInicial - totalVendido;
-
         if (estoqueAtual < quantidadePedido) {
             return res.status(400).json({ error: `Estoque insuficiente. Restam apenas ${estoqueAtual} frangos.` });
         }
-        
         inserirPedido();
-
     }).catch(err => {
         res.status(500).json({ error: 'Erro ao verificar o estoque: ' + err.message });
     });
@@ -46,16 +43,15 @@ router.post('/', (req, res) => {
         const params = [cliente_nome, cliente_endereco, cliente_bairro, cliente_referencia, cliente_telefone, quantidade_frangos, meio_frango, taxa_entrega, preco_total, forma_pagamento, canal_venda, picado, observacao, tempo_previsto];
         
         db.run(sql, params, function(err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
+            if (err) return res.status(500).json({ error: err.message });
+            sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
             res.status(201).json({ message: 'Pedido criado com sucesso!', pedidoId: this.lastID });
         });
     };
 
     if (cliente_endereco !== 'Retirada' && cliente_bairro) {
         db.get('SELECT * FROM taxas_bairro WHERE bairro = ?', [cliente_bairro], (err, row) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) return;
             if (!row) {
                 db.run('INSERT INTO taxas_bairro (bairro, taxa) VALUES (?, ?)', [cliente_bairro, taxa_entrega], (err) => {
                     if (err) console.error("Erro ao auto-cadastrar bairro:", err.message);
@@ -67,13 +63,13 @@ router.post('/', (req, res) => {
 
 // Rota para receber e salvar um pedido vindo do UaiRango
 router.post('/uairango', (req, res) => {
+    // ... (código existente da rota)
     const uairangoOrder = req.body;
-
     const {
         cod_pedido, valor_total, observacao, prazo_max, forma_pagamento,
         tipo_entrega, taxa_entrega, usuario, endereco, produtos, id_estabelecimento
     } = uairangoOrder;
-
+    // ... (lógica para processar o pedido)
     let totalFrangos = 0;
     if (produtos && Array.isArray(produtos)) {
         produtos.forEach(produto => {
@@ -85,9 +81,7 @@ router.post('/uairango', (req, res) => {
     }
     if (totalFrangos === 0 && produtos && produtos.length > 0) {
         totalFrangos = produtos.reduce((acc, p) => acc + p.quantidade, 0);
-        console.log(`[UaiRango Service] Nenhum produto com nome 'frango'. Assumindo ${totalFrangos} unidade(s) do produto principal.`);
     }
-    
     let formaPagamentoLocal = 'Pago'; 
     if (forma_pagamento) {
         const formaPagamentoLower = forma_pagamento.toLowerCase();
@@ -96,9 +90,7 @@ router.post('/uairango', (req, res) => {
         else if (formaPagamentoLower.includes('cartão') || formaPagamentoLower.includes('cartao')) formaPagamentoLocal = 'Cartão';
         else if (formaPagamentoLower.includes('online')) formaPagamentoLocal = 'Pago';
     }
-
     const isRetirada = tipo_entrega && tipo_entrega.toLowerCase() === 'retirada';
-    
     const sql = `
         INSERT INTO pedidos (
             uairango_id_pedido, cliente_nome, cliente_telefone, cliente_endereco, cliente_bairro,
@@ -108,24 +100,14 @@ router.post('/uairango', (req, res) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UaiRango', 'Pendente UaiRango', datetime('now', 'localtime'), ?, ?, ?, ?)
         ON CONFLICT(uairango_id_pedido) DO NOTHING
     `;
-
     const params = [
-        cod_pedido,
-        usuario ? usuario.nome : 'N/A',
+        cod_pedido, usuario ? usuario.nome : 'N/A',
         (usuario && usuario.tel1) ? usuario.tel1.replace(/\D/g, '') : 'N/A',
         isRetirada ? 'Retirada' : `${endereco.rua}, ${endereco.num} ${endereco.complemento || ''}`.trim(),
-        isRetirada ? '' : endereco.bairro,
-        Math.floor(totalFrangos),
-        (totalFrangos % 1 !== 0) ? 1 : 0,
-        taxa_entrega || 0,
-        valor_total,
-        formaPagamentoLocal,
-        0, // picado (padrão)
-        observacao,
-        prazo_max,
-        id_estabelecimento
+        isRetirada ? '' : endereco.bairro, Math.floor(totalFrangos),
+        (totalFrangos % 1 !== 0) ? 1 : 0, taxa_entrega || 0, valor_total,
+        formaPagamentoLocal, 0, observacao, prazo_max, id_estabelecimento
     ];
-
     db.run(sql, params, function(err) {
         if (err) {
             console.error("[UaiRango Service] Erro ao salvar pedido no banco de dados:", err.message);
@@ -133,12 +115,14 @@ router.post('/uairango', (req, res) => {
         }
         if (this.changes > 0) {
             console.log(`[UaiRango Service] Pedido ${cod_pedido} importado com sucesso.`);
+            sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
         }
         res.status(200).json({ message: 'Pedido processado.' });
     });
 });
 
-// Rota para obter todos os pedidos de uma data específica
+// ... (GET '/', GET '/:id', PUT '/:id' permanecem os mesmos)
+
 router.get('/', (req, res) => {
     const data = req.query.data || new Date().toISOString().slice(0, 10);
     const sql = `
@@ -196,6 +180,7 @@ router.post('/uairango/:id/aceitar', async (req, res) => {
 
         db.run("UPDATE pedidos SET status = 'Pendente' WHERE id = ?", [id], function(err) {
             if (err) return res.status(500).json({ error: 'Erro ao atualizar status do pedido local.' });
+            sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
             res.json({ message: 'Pedido aceito com sucesso!' });
         });
 
@@ -204,7 +189,6 @@ router.post('/uairango/:id/aceitar', async (req, res) => {
     }
 });
 
-// ROTA ATUALIZADA PARA REJEITAR PEDIDO
 router.post('/uairango/:id/rejeitar', async (req, res) => {
     const { id } = req.params;
     const { motivo } = req.body;
@@ -228,25 +212,21 @@ router.post('/uairango/:id/rejeitar', async (req, res) => {
         const est = await findEstabelecimentoByPedido();
 
         try {
-            // Tenta rejeitar no UaiRango
             await uairangoService.rejectOrder(pedido.uairango_id_pedido, est.token_developer, motivo);
         } catch (uairangoError) {
-            // Se o erro for que já não está pendente, ignoramos e seguimos para atualizar nosso BD.
-            // Se for outro erro, lançamos para o catch principal.
             if (uairangoError.message && !uairangoError.message.includes('não está mais pendente')) {
                 throw uairangoError;
             }
             console.warn(`[UaiRango Sync] Pedido ${pedido.uairango_id_pedido} já não estava pendente. Sincronizando status local.`);
         }
         
-        // Independentemente do resultado (sucesso ou "já não pendente"), atualizamos o status local
         db.run("UPDATE pedidos SET status = 'Cancelado' WHERE id = ?", [id], function(err) {
             if (err) return res.status(500).json({ error: 'Erro ao atualizar status do pedido local.' });
+            sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
             res.json({ message: 'Pedido rejeitado/sincronizado com sucesso!' });
         });
 
     } catch (error) {
-        // Captura outros erros (autenticação, erro de BD, etc.)
         res.status(500).json({ error: error.message });
     }
 });
@@ -280,6 +260,7 @@ router.put('/:id', (req, res) => {
 
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
+        sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
         res.json({ message: 'Pedido atualizado com sucesso!', changes: this.changes });
     });
 });
@@ -290,36 +271,16 @@ router.put('/:id/atribuir', (req, res) => {
 
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
-
-        const findMaxOrderSql = `
-            SELECT MAX(rota_ordem) as max_ordem 
-            FROM pedidos 
-            WHERE motoqueiro_id = ? AND date(horario_pedido) = date('now', 'localtime')
-        `;
-
+        const findMaxOrderSql = `SELECT MAX(rota_ordem) as max_ordem FROM pedidos WHERE motoqueiro_id = ? AND date(horario_pedido) = date('now', 'localtime')`;
         db.get(findMaxOrderSql, [motoqueiroIdNum], (err, row) => {
-            if (err) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ error: "Erro ao buscar a ordem da rota: " + err.message });
-            }
-
+            if (err) { db.run("ROLLBACK"); return res.status(500).json({ error: "Erro ao buscar a ordem da rota: " + err.message }); }
             const newOrder = (row && row.max_ordem != null) ? row.max_ordem + 1 : 1;
-
-            const updatePedidoSql = `
-                UPDATE pedidos 
-                SET motoqueiro_id = ?, status = 'Em Rota', rota_ordem = ? 
-                WHERE id = ?
-            `;
+            const updatePedidoSql = `UPDATE pedidos SET motoqueiro_id = ?, status = 'Em Rota', rota_ordem = ? WHERE id = ?`;
             db.run(updatePedidoSql, [motoqueiroIdNum, newOrder, pedidoIdNum], function(err) {
-                if (err) {
-                    db.run("ROLLBACK");
-                    return res.status(500).json({ error: "Erro ao atribuir o pedido: " + err.message });
-                }
-
+                if (err) { db.run("ROLLBACK"); return res.status(500).json({ error: "Erro ao atribuir o pedido: " + err.message }); }
                 db.run("COMMIT", (commitErr) => {
-                    if (commitErr) {
-                        return res.status(500).json({ error: "Erro ao finalizar a transação: " + commitErr.message });
-                    }
+                    if (commitErr) return res.status(500).json({ error: "Erro ao finalizar a transação: " + commitErr.message });
+                    sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
                     res.json({ message: 'Motoqueiro atribuído com sucesso!' });
                 });
             });
@@ -330,6 +291,7 @@ router.put('/:id/atribuir', (req, res) => {
 router.put('/:id/entregar', (req, res) => {
     db.run("UPDATE pedidos SET status = 'Entregue' WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
+        sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
         res.json({ message: 'Pedido marcado como entregue.' });
     });
 });
@@ -337,6 +299,7 @@ router.put('/:id/entregar', (req, res) => {
 router.put('/:id/retirou', (req, res) => {
     db.run("UPDATE pedidos SET status = 'Entregue' WHERE id = ? AND cliente_endereco = 'Retirada'", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
+        sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
         res.json({ message: 'Pedido marcado como retirado.' });
     });
 });
@@ -344,23 +307,21 @@ router.put('/:id/retirou', (req, res) => {
 router.put('/:id/cancelar', (req, res) => {
     db.run("UPDATE pedidos SET status = 'Cancelado', motoqueiro_id = NULL, rota_ordem = 0 WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
+        sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
         res.json({ message: 'Pedido cancelado.' });
     });
 });
 
 router.put('/ordenar-rota', (req, res) => {
     const { ordem, motoqueiroId } = req.body;
-
     if (!ordem || !Array.isArray(ordem) || !motoqueiroId) {
-        return res.status(400).json({ error: 'Dados inválidos. É necessário fornecer a ordem e o ID do motoqueiro.' });
+        return res.status(400).json({ error: 'Dados inválidos.' });
     }
-    const motoqueiroIdNum = parseInt(motoqueiroId, 10);
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
         const promises = ordem.map((pedidoId, index) => {
             return new Promise((resolve, reject) => {
-                const sql = "UPDATE pedidos SET rota_ordem = ? WHERE id = ? AND motoqueiro_id = ?";
-                db.run(sql, [index + 1, parseInt(pedidoId, 10), motoqueiroIdNum], function(err) {
+                db.run("UPDATE pedidos SET rota_ordem = ? WHERE id = ? AND motoqueiro_id = ?", [index + 1, parseInt(pedidoId, 10), parseInt(motoqueiroId, 10)], function(err) {
                     if (err) reject(err);
                     else resolve();
                 });
@@ -370,6 +331,7 @@ router.put('/ordenar-rota', (req, res) => {
             .then(() => {
                 db.run("COMMIT", (commitErr) => {
                     if (commitErr) return res.status(500).json({ error: commitErr.message });
+                    sseService.sendEvent({ type: 'update-pedidos' }); // Notifica o frontend
                     res.json({ message: 'Rota de entrega ordenada com sucesso.' });
                 });
             })
@@ -381,3 +343,4 @@ router.put('/ordenar-rota', (req, res) => {
 });
 
 module.exports = router;
+
